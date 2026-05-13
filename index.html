@@ -277,19 +277,103 @@
         </div>
       </div>
 
-      <!-- Effects and Hazards legend, placed directly under the board
-           for quick reference. Every entry is always visible from the
-           start (no gating on prior encounters). The list is ordered
-           by when a player first encounters each feature as they
-           progress through the built-in levels (Hallway → Sandbox), so
-           reading top-to-bottom mirrors the difficulty curve. Each
-           entry is intentionally short — the glyph + name does most
-           of the work; descriptions are a single clause. The full
-           rules live in the "Rules — current" panel in the side
-           column. -->
-      <div class="board-legend" id="board-legend">
-        <h2>Effects and Hazards</h2>
-        <ul class="legend-grid">
+      <!-- Controls card. Sits directly under the board (in the main
+           column) so Undo, Reset Level, level-jump, and the HC toggle
+           are one click away from the action — no need to glance over
+           to the sidebar mid-turn. Previously parked at the top of the
+           sidebar; moved into the main column so the player's eyes
+           stay on the board area between turns. -->
+      <div class="card" id="controls-card">
+        <h2>Controls</h2>
+        <div class="rules">
+          On your turn, click anywhere to move <strong>one square</strong> toward your click
+          (up/down/left/right). Enter via the <strong style="color:var(--in)">IN</strong> cell,
+          exit via the <strong style="color:var(--out)">OUT</strong> cell.
+        </div>
+        <div class="control-actions">
+          <button id="undo-btn" class="big-action-btn undo-btn" type="button"
+                  title="Undo your last move. Only available once per move.">
+            <span class="big-action-btn-icon" aria-hidden="true">↶</span>
+            <span class="big-action-btn-label">Undo</span>
+          </button>
+          <button id="reset-level-btn" class="big-action-btn reset-level-btn" type="button"
+                  title="Rebuild the current level — your last attempt's score is rolled back, but keys you've collected stay.">
+            <span class="big-action-btn-icon" aria-hidden="true">⟳</span>
+            <span class="big-action-btn-label">Reset Level</span>
+          </button>
+        </div>
+        <div style="margin-top:10px;">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-bottom:6px;">Jump to level</div>
+          <div id="level-jump-row" style="display:flex; gap:4px; flex-wrap:wrap;"></div>
+        </div>
+        <div style="margin-top:12px;">
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); cursor:pointer;">
+            <input type="checkbox" id="high-contrast-toggle-controls" />
+            <span>High-contrast mode</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); cursor:pointer; margin-top:6px;">
+            <input type="checkbox" id="spider-free-toggle-controls" />
+            <span>Spider-free mode (worms instead of spiders)</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <aside id="side">
+      <!-- Combined Turn + Players card. The header reports the running
+           turn counter and a "Min" floor: the minimum number of turns it
+           would take a single player to clear the current level
+           (computed via BFS in computeMinTurnsToOut). The active player
+           is identified by the status line below + the highlighted
+           badge on their per-player row, so the header itself doesn't
+           repeat the name. -->
+      <div class="card">
+        <div class="turn-header">
+          <h2>Player Info</h2>
+          <span id="turn-counter">Turn <span id="turn-counter-num">0</span> <span class="turn-counter-min">· Minimum turns to clear: <span id="min-turns">—</span></span></span>
+        </div>
+        <div class="status-line" id="status-line">Click the green <strong style="color:var(--in)">IN</strong> cell to enter the grid.</div>
+
+        <!-- Players list (folded in from the former Players card). -->
+        <div style="margin-top:12px; padding-top:10px; border-top:1px solid #1a2030;">
+          <div class="player-row" data-player-row="1">
+            <span><span class="swatch p1" style="display:inline-block;vertical-align:middle;"></span> <span id="p1-name">Player 1</span></span>
+            <span class="badge" id="p1-badge">off-grid</span>
+          </div>
+          <div class="status-line" id="p1-loadout" style="margin:2px 0 6px 22px;">no weapon</div>
+          <button type="button" id="p1-drink-potion" class="drink-potion-btn hidden"
+                  style="margin:0 0 8px 22px;"
+                  title="Drink a Spider Freeze Potion. Freezes spiders for 4 of your turns. Shortcut: P">
+            🧪 Drink Potion <span style="opacity:0.65;font-weight:400;font-size:10px;">(P)</span>
+          </button>
+          <div class="player-row" data-player-row="2">
+            <span><span class="swatch p2" style="display:inline-block;vertical-align:middle;"></span> <span id="p2-name">Player 2</span></span>
+            <span class="badge" id="p2-badge">off-grid</span>
+          </div>
+          <div class="status-line" id="p2-loadout" style="margin:2px 0 6px 22px;">no weapon</div>
+          <div class="player-row" data-player-row="3" style="display:none;">
+            <span><span class="swatch p3" style="display:inline-block;vertical-align:middle;"></span> <span id="p3-name">Player 3</span></span>
+            <span class="badge" id="p3-badge">off-grid</span>
+          </div>
+          <div class="status-line" id="p3-loadout" style="margin:2px 0 0 22px; display:none;">no weapon</div>
+        </div>
+      </div>
+
+      <!-- Hazards, Items, & Effects legend. Was previously a full-width
+           panel under the board (in the main column); moved into the
+           sidebar so the board area stays uncluttered. Wrapped in the
+           rules-toggle pattern so it can collapse/expand on demand, and
+           starts collapsed on every page load — first-time players see
+           a clean sidebar and can open it whenever they hit something
+           unfamiliar. (Order is unchanged: by when the player first
+           encounters each feature in the built-in campaign, top to
+           bottom.) -->
+      <div class="card" id="hazards-card">
+        <button type="button" id="hazards-toggle" class="rules-toggle" aria-expanded="false" aria-controls="hazards-list">
+          <span class="rules-toggle-chev" aria-hidden="true">▸</span>
+          <h2 style="margin:0;">Hazards, Items, &amp; Effects</h2>
+        </button>
+        <ul class="legend-grid" id="hazards-list" hidden>
           <!-- L1 Hallway -->
           <li data-feature="spider">
             <span style="display:inline-block;width:14px;height:14px;vertical-align:middle;
@@ -433,81 +517,6 @@
             <strong style="color:#ef4444">Button</strong> — opens locks, flips portals, or triggers TnT while pressed.
           </li>
         </ul>
-      </div>
-    </div>
-
-    <aside id="side">
-      <!-- Controls card. Moved to the top of the sidebar so players have
-           one-click access to Undo, Reset Level, level-jump, and the HC
-           toggle without having to scroll past Turn/Players first. -->
-      <div class="card">
-        <h2>Controls</h2>
-        <div class="rules">
-          On your turn, click anywhere to move <strong>one square</strong> toward your click
-          (up/down/left/right). Enter via the <strong style="color:var(--in)">IN</strong> cell,
-          exit via the <strong style="color:var(--out)">OUT</strong> cell.
-        </div>
-        <div class="control-actions">
-          <button id="undo-btn" class="big-action-btn undo-btn" type="button"
-                  title="Undo your last move. Only available once per move.">
-            <span class="big-action-btn-icon" aria-hidden="true">↶</span>
-            <span class="big-action-btn-label">Undo</span>
-          </button>
-          <button id="reset-level-btn" class="big-action-btn reset-level-btn" type="button"
-                  title="Rebuild the current level — your last attempt's score is rolled back, but keys you've collected stay.">
-            <span class="big-action-btn-icon" aria-hidden="true">⟳</span>
-            <span class="big-action-btn-label">Reset Level</span>
-          </button>
-        </div>
-        <div style="margin-top:10px;">
-          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-bottom:6px;">Jump to level</div>
-          <div id="level-jump-row" style="display:flex; gap:4px; flex-wrap:wrap;"></div>
-        </div>
-        <div style="margin-top:12px;">
-          <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); cursor:pointer;">
-            <input type="checkbox" id="high-contrast-toggle-controls" />
-            <span>High-contrast mode</span>
-          </label>
-        </div>
-      </div>
-
-      <!-- Combined Turn + Players card. The header reports the running
-           turn counter and a "Min" floor: the minimum number of turns it
-           would take a single player to clear the current level
-           (computed via BFS in computeMinTurnsToOut). The active player
-           is identified by the status line below + the highlighted
-           badge on their per-player row, so the header itself doesn't
-           repeat the name. -->
-      <div class="card">
-        <div class="turn-header">
-          <h2>Turn</h2>
-          <span id="turn-counter">Turn <span id="turn-counter-num">0</span> <span class="turn-counter-min">· Minimum turns to clear: <span id="min-turns">—</span></span></span>
-        </div>
-        <div class="status-line" id="status-line">Click the green <strong style="color:var(--in)">IN</strong> cell to enter the grid.</div>
-
-        <!-- Players list (folded in from the former Players card). -->
-        <div style="margin-top:12px; padding-top:10px; border-top:1px solid #1a2030;">
-          <div class="player-row" data-player-row="1">
-            <span><span class="swatch p1" style="display:inline-block;vertical-align:middle;"></span> <span id="p1-name">Player 1</span></span>
-            <span class="badge" id="p1-badge">off-grid</span>
-          </div>
-          <div class="status-line" id="p1-loadout" style="margin:2px 0 6px 22px;">no weapon</div>
-          <button type="button" id="p1-drink-potion" class="drink-potion-btn hidden"
-                  style="margin:0 0 8px 22px;"
-                  title="Drink a Spider Freeze Potion. Freezes spiders for 4 of your turns. Shortcut: P">
-            🧪 Drink Potion <span style="opacity:0.65;font-weight:400;font-size:10px;">(P)</span>
-          </button>
-          <div class="player-row" data-player-row="2">
-            <span><span class="swatch p2" style="display:inline-block;vertical-align:middle;"></span> <span id="p2-name">Player 2</span></span>
-            <span class="badge" id="p2-badge">off-grid</span>
-          </div>
-          <div class="status-line" id="p2-loadout" style="margin:2px 0 6px 22px;">no weapon</div>
-          <div class="player-row" data-player-row="3" style="display:none;">
-            <span><span class="swatch p3" style="display:inline-block;vertical-align:middle;"></span> <span id="p3-name">Player 3</span></span>
-            <span class="badge" id="p3-badge">off-grid</span>
-          </div>
-          <div class="status-line" id="p3-loadout" style="margin:2px 0 0 22px; display:none;">no weapon</div>
-        </div>
       </div>
 
       <div class="card" id="game-over-card" style="display:none;">

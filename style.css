@@ -2688,10 +2688,10 @@
     .swatch.p1 { background: var(--p1); }
     .swatch.p2 { background: var(--p2); }
     .swatch.p3 { background: var(--p3); }
-    .status-line { color: var(--muted); font-size: 12px; margin-top: 6px; }
+    .status-line { color: var(--muted); font-size: 13px; margin-top: 6px; }
     .player-row {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 4px 0; font-size: 13px;
+      padding: 4px 0; font-size: 14px;
     }
     .player-row + .player-row { border-top: 1px solid #1a2030; padding-top: 8px; margin-top: 4px; }
     .badge {
@@ -2836,9 +2836,14 @@
       cursor: pointer;
       transition: background 120ms ease, border-color 120ms ease, opacity 120ms ease;
     }
+    /* Don't let Undo / Reset Level stretch to fill the panel — they
+       sat as full-width pills before and looked oversized next to the
+       compact level-jump and HC rows below. `flex: 0 0 auto` keeps them
+       at their natural padded-inline-flex width so they read as buttons,
+       not as primary CTAs. They still wrap onto a second line on very
+       narrow viewports thanks to `flex-wrap: wrap` on .control-actions. */
     .control-actions .big-action-btn {
-      flex: 1 1 0;
-      min-width: 110px;
+      flex: 0 0 auto;
     }
     .big-action-btn-icon {
       font-size: 14px;
@@ -2897,7 +2902,7 @@
       color: #6ee7b7;
       font-size: 13px;
     }
-    .rules { font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .rules { font-size: 13px; color: var(--muted); line-height: 1.5; }
     .rules strong { color: var(--fg); }
 
     /* Collapsible Rules card. The h2 lives inside a button so the whole
@@ -3131,20 +3136,36 @@
       font-weight: 600;
     }
     .board-legend h3:first-of-type { margin-top: 2px; }
-    .board-legend .legend-grid {
+    /* Legend grid styles are intentionally un-scoped from .board-legend
+       so the same list works whether the legend lives in the main
+       column (old layout) or inside a sidebar .card (current layout,
+       under the Turn card via #hazards-card). In the narrow sidebar
+       the auto-fit kicks in and the grid collapses to a single column,
+       which is what we want. */
+    .legend-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 4px 14px;
       list-style: none;
-      margin: 0;
+      margin: 8px 0 0;
       padding: 0;
     }
-    .board-legend .legend-grid li {
-      font-size: 12px;
+    /* `display: grid` above wins over the UA's [hidden] { display:none }
+       rule, so we re-assert hiding here. Without this the collapsed
+       legend would still be visible. */
+    .legend-grid[hidden] { display: none; }
+    .legend-grid li {
+      font-size: 13px;
       color: var(--muted);
-      line-height: 1.4;
+      line-height: 1.45;
     }
-    .board-legend .legend-grid li strong { color: var(--fg); }
+    .legend-grid li strong { color: var(--fg); }
+
+    /* Sidebar Hazards/Items/Effects card. Sits under the Turn card and
+       holds the same legend list, but inside a .card shell and with a
+       collapsible header (rules-toggle pattern). The list itself uses
+       the un-scoped .legend-grid rules above. */
+    #hazards-card .legend-grid { margin-top: 10px; }
 
     /* ── Setup overlay ─────────────────────────────────────────────── */
     #setup-overlay {

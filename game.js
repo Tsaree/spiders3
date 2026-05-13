@@ -6600,6 +6600,28 @@
         });
       })();
 
+      // Collapsible Hazards / Items / Effects card. Unlike the Rules
+      // card, this one intentionally does NOT persist its state: every
+      // page load starts collapsed so first-time players aren't hit
+      // with a wall of glyphs they haven't met yet — they can expand
+      // it the first time they bump into something unfamiliar.
+      (function wireHazardsToggle() {
+        const btn = document.getElementById('hazards-toggle');
+        const list = document.getElementById('hazards-list');
+        if (!btn || !list) return;
+        let open = false;
+        const apply = () => {
+          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+          if (open) list.removeAttribute('hidden');
+          else list.setAttribute('hidden', '');
+        };
+        apply();
+        btn.addEventListener('click', () => {
+          open = !open;
+          apply();
+        });
+      })();
+
       // ── Render ───────────────────────────────────────────────────────────
       function render(opts = {}) {
         const hideActiveIdx = (typeof opts.hideActiveIdx === 'number') ? opts.hideActiveIdx : -1;
@@ -7210,9 +7232,12 @@
             badgeEl.classList.add('active');
             if (idx === 1) badgeEl.classList.add('p2');
             else if (idx === 2) badgeEl.classList.add('p3');
+            // Single-player: it's always this player's turn, so the
+            // "your turn · …" prefix is redundant noise. Just show their
+            // current spot (or "off-grid" before they enter through IN).
             badgeEl.textContent = p.status === 'off-grid'
-              ? 'your turn · enter'
-              : `your turn · ${p.c + 1},${p.r + 1}`;
+              ? 'off-grid'
+              : `at ${p.c + 1},${p.r + 1}`;
           } else {
             badgeEl.textContent = p.status === 'off-grid'
               ? 'off-grid'
@@ -7591,6 +7616,10 @@
         state.playerNames = [v || 'Player 1'];
         const sf = document.getElementById('spider-free-toggle');
         state.spiderFree = !!(sf && sf.checked);
+        // Mirror onto the in-game Controls-panel checkbox so the two
+        // toggles stay in sync from the very first turn.
+        const sfControls = document.getElementById('spider-free-toggle-controls');
+        if (sfControls) sfControls.checked = state.spiderFree;
         // High-contrast mode is purely visual, so we don't store it on
         // game state — just flip the body class and persist the choice
         // so it survives a reload.
@@ -7639,6 +7668,33 @@
         hcToggleControls.checked = false;
         hcToggleControls.addEventListener('change', (e) => {
           applyHighContrast(!!e.target.checked);
+        });
+      }
+
+      // Spider-free toggle: same splash <-> in-game mirror pattern as HC.
+      // The splash one is set at game start (state.spiderFree is read in
+      // startFromSetup); the in-game one in the Controls panel lets the
+      // player flip mode mid-run without restarting. Toggling here flips
+      // state.spiderFree, re-applies the cached static text swaps via
+      // applySpiderFreeText(), and re-renders the board so spider/worm
+      // glyphs swap in place. We sync both checkboxes so they always
+      // reflect the same source of truth.
+      function applySpiderFree(enabled) {
+        const on = !!enabled;
+        state.spiderFree = on;
+        const a = document.getElementById('spider-free-toggle');
+        const b = document.getElementById('spider-free-toggle-controls');
+        if (a) a.checked = on;
+        if (b) b.checked = on;
+        document.body.classList.toggle('spider-free-mode', on);
+        if (typeof applySpiderFreeText === 'function') applySpiderFreeText();
+        if (typeof render === 'function') render();
+      }
+      const sfToggleControls = document.getElementById('spider-free-toggle-controls');
+      if (sfToggleControls) {
+        sfToggleControls.checked = !!state.spiderFree;
+        sfToggleControls.addEventListener('change', (e) => {
+          applySpiderFree(!!e.target.checked);
         });
       }
 
