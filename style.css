@@ -1,0 +1,3312 @@
+    :root {
+      --bg: #0b0d12;
+      --panel: #14171f;
+      --fg: #e8e8ea;
+      --muted: #6b7280;
+      --grid-line: #1f2937;
+      /* FX animation durations. Centralized so balance changes are
+         one-line edits. All FX text/burst rules below reference these
+         vars rather than hardcoding millisecond values. */
+      --fx-boom-dur: 1350ms;
+      --fx-lavakill-dur: 1350ms;
+      --fx-eaten-dur: 1950ms;
+      --fx-cake-dur: 2100ms;
+      /* Outer grid frame — sits ABOVE --grid-line in contrast so the
+         playfield's perimeter reads cleanly against the cave backdrop in
+         every level. body.high-contrast bumps this brighter still. */
+      --grid-border: rgba(245, 233, 211, 0.55);
+      --cell: #0f1218;
+      --cell-hover: #1a2030;
+      --in: #10b981;
+      --out: #ef4444;
+      --p1: #8b5cf6;
+      --p2: #f59e0b;
+      --p3: #14b8a6;
+      --legal: rgba(139, 92, 246, 0.18);
+      --legal-p2: rgba(245, 158, 11, 0.18);
+      --legal-p3: rgba(20, 184, 166, 0.18);
+      --slide: #38bdf8;
+      --river: #22d3ee;
+      --knight: #c084fc;
+      --lava: #ef4444;
+      --tnt: #f97316;
+      --weapon: #fde047;
+      --key: #fbbf24;
+      --lock: #94a3b8;
+      --spider: #ef4444;
+      --accent-cyan: #67e8f9;
+      --potion: #a78bfa;
+      --wall: #fb923c;
+      --portal: #d946ef;
+      --portal-y: #fde047;
+      --portal-b: #3b82f6;
+      --portal-r: #f43f5e;
+      --portal-g: #22c55e;
+      --boulder: #6b7280;
+    }
+
+    /* ── High-contrast mode ────────────────────────────────────────────────
+       Toggle on the splash screen sets `body.high-contrast`, which is also
+       persisted to localStorage so the choice survives a reload. Goals:
+         1. Bump the WCAG-failing tokens (--muted ~3.8:1, --p1 ~4.2:1, faint
+            grid lines) so all helper text and player chips clear AA 4.5:1.
+         2. Differentiate hazard colors that share or sit very close to the
+            same hex in the default palette (4 reds, 2 yellows, 4 violets,
+            4 oranges) so colorblind / low-vision players can tell them
+            apart even when the icons are tiny.
+         3. Make env-cell tints and box-shadow borders bolder so hazards
+            read at a glance without depending on the small glyph in the
+            corner.
+       Color (token overrides). The original tokens stay in :root for
+       default mode; these only kick in under body.high-contrast. */
+    body.high-contrast {
+      /* Body / helper text — was 3.7:1 vs panel, now ~12:1 */
+      --muted:     #c9d1dc;
+      /* Cell separator — was 1.3:1 (barely visible), now ~5:1 */
+      --grid-line: #4a5568;
+      /* Outer grid frame — go even brighter in HC so the playfield
+         perimeter is unmistakable against the cave backdrop. */
+      --grid-border: rgba(245, 233, 211, 0.95);
+      /* Player 1 chip text — was 4.2:1 vs panel, now ~7:1 */
+      --p1:        #b794f4;
+
+      /* Differentiate the four reds. OUT keeps a pure red; lava shifts to
+         a warm orange (it already pulses, so the hue split reinforces the
+         "molten" read); spider stays red but its glyph carries the load;
+         portal-r leans toward magenta-pink. */
+      --out:       #ff5252;
+      --lava:      #ff8a3d;
+      --spider:    #ff5252;
+      --portal-r:  #ff3d7f;
+
+      /* Differentiate the two yellows. Weapon keeps the brighter lemon
+         hue; portal-y shifts to a warmer amber. */
+      --weapon:    #fde047;
+      --portal-y:  #facc15;
+
+      /* Green portal shifts toward emerald (and away from the green
+         knight token) so the two greens don't read as the same thing. */
+      --portal-g:  #34d399;
+
+      /* Pull the violet cluster apart. Portal-purple → hot pink so it
+         doesn't read as a knight or a player token. */
+      --portal:    #f472b6;
+      --knight:    #c084fc;
+      --potion:    #c4b5fd;
+    }
+    /* Bolder env tints + thicker borders so hazards read at a glance even
+       when a glyph isn't visible (for example a player standing on TnT). */
+    /* Slide cell. Flat diagonal tint plus the inset cyan border ring;
+       the cross-hatched look was retired because it visually echoed the
+       portal pattern. The directional `↘` glyph (rendered by the .env-glyph
+       child) is the primary cue that this is a slide and which way it
+       sends you. */
+    body.high-contrast .cell.env-slide {
+      background:
+        linear-gradient(
+          135deg,
+          rgba(56, 189, 248, 0.62) 0%,
+          rgba(56, 189, 248, 0.22) 100%
+        );
+      box-shadow: inset 0 0 0 2px rgba(56, 189, 248, 0.95);
+    }
+    body.high-contrast .cell.env-knight {
+      background:
+        radial-gradient(ellipse at center, rgba(192, 132, 252, 0.55), rgba(192, 132, 252, 0.15) 70%);
+      box-shadow: inset 0 0 0 2px rgba(192, 132, 252, 0.95);
+    }
+    body.high-contrast .cell.env-green-knight {
+      background:
+        radial-gradient(ellipse at center, rgba(74, 222, 128, 0.55), rgba(74, 222, 128, 0.15) 70%);
+      box-shadow: inset 0 0 0 2px rgba(74, 222, 128, 0.95);
+    }
+    body.high-contrast .cell.env-lava {
+      background:
+        radial-gradient(circle at 28% 32%, rgba(254, 240, 138, 0.85) 0%, rgba(254, 240, 138, 0) 14%),
+        radial-gradient(circle at 72% 66%, rgba(253, 224, 71, 0.80)  0%, rgba(253, 224, 71, 0)  16%),
+        radial-gradient(ellipse at 50% 50%, #fb923c 0%, #ea580c 32%, #b91c1c 70%, #7f1d1d 100%);
+      box-shadow:
+        inset 0 0 0 2px rgba(254, 215, 60, 0.95),
+        inset 0 0 14px rgba(220, 38, 38, 0.55);
+    }
+    body.high-contrast .cell.env-tnt {
+      background:
+        radial-gradient(ellipse at 50% 50%, rgba(249, 115, 22, 0.60), rgba(127, 29, 29, 0.20) 70%);
+      box-shadow: inset 0 0 0 2px rgba(249, 115, 22, 0.95);
+    }
+    body.high-contrast .cell.env-tnt .env-glyph {
+      color: #fed7aa;
+      text-shadow: 0 0 8px rgba(249, 115, 22, 1);
+    }
+    /* high-contrast mode: wall cells stay backgroundless too; the
+       .wall-bar override below brightens the directional bars instead. */
+    body.high-contrast .wall-bar {
+      box-shadow: 0 0 8px rgba(251, 146, 60, 0.95);
+    }
+    /* IN / OUT corners: stronger gradient + thicker corner ring so the
+       entry and exit cells are unmistakable from across the board. */
+    body.high-contrast .cell.in {
+      background: linear-gradient(180deg, rgba(16, 185, 129, 0.55), rgba(16, 185, 129, 0.25));
+      box-shadow: inset 0 0 0 3px rgba(16, 185, 129, 0.95);
+    }
+    body.high-contrast .cell.out {
+      background: linear-gradient(180deg, rgba(255, 82, 82, 0.55), rgba(255, 82, 82, 0.25));
+      box-shadow: inset 0 0 0 3px rgba(255, 82, 82, 0.95);
+    }
+    /* Legal-move halo: more opaque so the next-step preview can't get lost
+       under env tinting. */
+    body.high-contrast .cell.legal::after {
+      background: rgba(139, 92, 246, 0.35);
+    }
+    body.high-contrast .cell.legal.p2::after { background: rgba(245, 158, 11, 0.35); }
+    body.high-contrast .cell.legal.p3::after { background: rgba(20, 184, 166, 0.35); }
+    /* Cell-hover state — slightly lighter so it stands out from neighbours. */
+    body.high-contrast .cell.legal:hover { background: #232a3c; }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+    }
+    body {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      padding: 20px;
+      position: relative;
+      /* Layered "dark cave" backdrop: warm torch glow up top, blue-black
+         ambient pools, deep near-black base. */
+      background:
+        radial-gradient(ellipse 60% 35% at 50% 0%,
+          rgba(245, 158, 11, 0.10), transparent 70%),
+        radial-gradient(ellipse 70% 55% at 18% 30%,
+          rgba(30, 41, 59, 0.55), transparent 72%),
+        radial-gradient(ellipse 70% 55% at 82% 70%,
+          rgba(15, 23, 42, 0.55), transparent 72%),
+        radial-gradient(circle at 50% 110%,
+          rgba(0, 0, 0, 0.85), transparent 60%),
+        linear-gradient(180deg, #04050a 0%, #0a0c12 55%, #050609 100%);
+      background-attachment: fixed;
+    }
+    /* Rocky texture overlay (inline SVG noise, no external assets). */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.22;
+      mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400' preserveAspectRatio='none'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+      background-size: 400px 400px;
+    }
+    /* Stalactite silhouette (top edge) for cave atmosphere. */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 90px;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.6;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 90' preserveAspectRatio='none'><path d='M0,0 L0,30 L40,55 L70,18 L110,70 L150,22 L195,60 L240,12 L290,72 L340,28 L390,52 L430,18 L480,68 L530,30 L580,76 L630,18 L685,58 L740,22 L790,72 L840,28 L890,60 L940,18 L990,70 L1040,30 L1090,58 L1140,22 L1200,42 L1200,0 Z' fill='%23030308'/></svg>");
+      background-size: 100% 100%;
+    }
+    /* Keep page content above the backdrop overlays. */
+    h1, #app { position: relative; z-index: 1; }
+    h1 {
+      margin: 0;
+      font-family: 'Bangers', 'Cabin Sketch', cursive;
+      font-size: 40px;
+      font-weight: 400;
+      letter-spacing: 0.06em;
+      color: #f5e9d3;
+      text-shadow:
+        0 1px 0 #2c1f15,
+        0 2px 0 #1a120b,
+        0 3px 8px rgba(0, 0, 0, 0.75),
+        0 0 22px rgba(245, 158, 11, 0.18);
+      -webkit-font-smoothing: antialiased;
+    }
+    h1 .pill {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      background: rgba(139, 92, 246, 0.18);
+      color: #c4b5fd;
+      margin-left: 10px;
+      font-family: 'Cabin Sketch', cursive;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      vertical-align: middle;
+      text-shadow: none;
+    }
+    /* Spider-free mode title swap. The original "Spiders III" gets a
+       red diagonal slash drawn over it, and a green "Worms III" reveal
+       appears immediately to its right. Both spans live inside the h1
+       so the typography stays consistent with the rest of the title. */
+    h1 .brand-title {
+      position: relative;
+      display: inline-block;
+    }
+    h1 .brand-strike {
+      position: absolute;
+      top: 50%;
+      left: -4%;
+      right: -4%;
+      height: 8px;
+      transform: translateY(-50%) rotate(-12deg);
+      background: linear-gradient(
+        to right,
+        transparent 0%,
+        #ef4444 6%,
+        #ef4444 94%,
+        transparent 100%
+      );
+      border-radius: 4px;
+      box-shadow: 0 1px 0 #2a0a0a, 0 0 12px rgba(239, 68, 68, 0.55);
+      display: none;
+      pointer-events: none;
+    }
+    h1 .brand-worm {
+      display: none;
+      margin-left: 14px;
+      color: #34d399;
+      text-shadow:
+        0 1px 0 #062017,
+        0 2px 0 #04130d,
+        0 3px 8px rgba(0, 0, 0, 0.7),
+        0 0 18px rgba(52, 211, 153, 0.28);
+    }
+    body.spider-free-mode h1 .brand-strike { display: block; }
+    body.spider-free-mode h1 .brand-worm   { display: inline-block; }
+    /* Level banner: shows current level number + theme name. Lives at
+       the top-left of #board-wrap (inside the cave) so the game title
+       and the level title both sit above the fold on a typical
+       viewport. Compact size so it doesn't dominate the cave. */
+    #level-banner {
+      position: relative;
+      z-index: 2;
+      margin: 0 0 10px;
+      font-family: 'Bangers', 'Cabin Sketch', cursive;
+      font-size: 22px;
+      font-weight: 400;
+      letter-spacing: 0.05em;
+      color: var(--out, #f59e0b);
+      text-align: left;
+      text-shadow:
+        0 1px 0 #2c1f15,
+        0 2px 0 #1a120b,
+        0 3px 6px rgba(0, 0, 0, 0.6),
+        0 0 16px rgba(245, 158, 11, 0.15);
+    }
+    /* "Unsaved edits" pill that sits inline next to the level title
+       while state.editorDirty is true. Resets back to .hidden after a
+       successful save or after the user OKs a discard prompt. The pill
+       uses its own font/weight to stay readable against the Bangers
+       level title, and a soft amber glow to signal "attention without
+       alarm" — destructive actions are still gated by confirm(). */
+    .unsaved-edits-badge {
+      display: inline-block;
+      margin-left: 10px;
+      padding: 2px 8px;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #fde047;
+      background: rgba(202, 138, 4, 0.18);
+      border: 1px solid rgba(250, 204, 21, 0.45);
+      border-radius: 999px;
+      vertical-align: middle;
+      text-shadow: none;
+      box-shadow:
+        0 0 0 1px rgba(0, 0, 0, 0.25) inset,
+        0 0 8px rgba(250, 204, 21, 0.25);
+      animation: unsaved-pulse 2.4s ease-in-out infinite;
+    }
+    .unsaved-edits-badge.hidden { display: none; }
+    @keyframes unsaved-pulse {
+      0%, 100% { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25) inset, 0 0 8px rgba(250, 204, 21, 0.25); }
+      50%      { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25) inset, 0 0 14px rgba(250, 204, 21, 0.55); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .unsaved-edits-badge { animation: none; }
+    }
+    /* Playtest-mode pill: announces that the current play session is a
+       draft preview. Uses the same shape as the unsaved-edits pill but
+       in a cooler hue to signal "playable preview" vs. "warning". */
+    .playtest-banner {
+      display: inline-block;
+      margin-left: 10px;
+      padding: 2px 8px;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #7dd3fc;
+      background: rgba(14, 116, 144, 0.22);
+      border: 1px solid rgba(125, 211, 252, 0.45);
+      border-radius: 999px;
+      vertical-align: middle;
+      text-shadow: none;
+      box-shadow:
+        0 0 0 1px rgba(0, 0, 0, 0.25) inset,
+        0 0 8px rgba(125, 211, 252, 0.25);
+      animation: playtest-pulse 2.4s ease-in-out infinite;
+    }
+    .playtest-banner.hidden { display: none; }
+    @keyframes playtest-pulse {
+      0%, 100% { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25) inset, 0 0 8px rgba(125, 211, 252, 0.25); }
+      50%      { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25) inset, 0 0 14px rgba(125, 211, 252, 0.55); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .playtest-banner { animation: none; }
+    }
+    /* When the EDIT MODE button is repurposed as "Back to editor"
+       during playtest, tint it cyan so it visually pairs with the
+       playtest banner. */
+    #edit-btn.playtest-return {
+      background: linear-gradient(180deg, #0e7490 0%, #155e75 100%);
+      border-color: #7dd3fc;
+      box-shadow: 0 0 0 2px rgba(125, 211, 252, 0.35);
+    }
+    #app {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: 24px;
+      align-items: start;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    @media (max-width: 880px) {
+      #app { grid-template-columns: 1fr; }
+    }
+    #board-wrap {
+      position: relative;
+      /* "Mysterious cave" backdrop: warm torch wash up top, deep ambient
+         pool in the middle, near-black base. The colors lean into the
+         brown/sandstone end of the rock palette so the cave reads as a
+         warm cavern rather than the cool dark void of the page body. */
+      background:
+        radial-gradient(ellipse 70% 40% at 50% 0%,
+          rgba(245, 158, 11, 0.12), transparent 65%),
+        radial-gradient(ellipse 80% 70% at 50% 50%,
+          rgba(20, 14, 9, 0.55), transparent 75%),
+        linear-gradient(180deg, #2c1f15 0%, #1c130b 50%, #0e0905 100%);
+      border: 1px solid #2c1f15;
+      border-radius: 12px;
+      padding: 16px;
+      overflow: hidden;
+      box-shadow:
+        inset 0 0 60px rgba(0, 0, 0, 0.65),
+        0 6px 18px rgba(0, 0, 0, 0.45);
+    }
+    /* Scoreboard above the grid: large yellow cumulative total on the
+       left, recent point-earning events on the right. Sits inside
+       #board-wrap so it shares the cave backdrop. */
+    #board-scoreboard {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      /* Sits BELOW the grid — top margin gives breathing room from the
+         board, bottom margin matches the rest of the column rhythm. */
+      margin: 10px auto;
+      width: min(70vh, 100%);
+      padding: 10px 14px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(250, 204, 21, 0.25);
+      border-radius: 8px;
+    }
+    #board-scoreboard-total {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      flex: 0 0 auto;
+      line-height: 1;
+    }
+    #board-scoreboard-total .label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #fde047;
+      opacity: 0.8;
+      margin-bottom: 2px;
+    }
+    #board-scoreboard-total .value {
+      font-size: 44px;
+      font-weight: 900;
+      color: #fde047;
+      text-shadow: 0 0 12px rgba(250, 204, 21, 0.45);
+      font-variant-numeric: tabular-nums;
+    }
+    #board-scoreboard-log {
+      flex: 1 1 auto;
+      min-width: 0;
+      max-height: 110px;
+      overflow: hidden;
+      font-size: 12px;
+      line-height: 1.25;
+      color: #d1d5db;
+    }
+    #board-scoreboard-log .empty {
+      color: var(--muted);
+      font-style: italic;
+    }
+    #board-scoreboard-log ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    #board-scoreboard-log ul li {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 1px 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    #board-scoreboard-log ul li:first-child { border-top: 0; }
+    /* Off-grid staging slot: a one-cell-sized space adjacent to (and just
+       outside) the IN cell that holds a colored puck for each player
+       whose status is 'off-grid'. The slot is absolutely-positioned
+       inside #board-wrap; render() updates its top/left/width/height to
+       hug the left edge of the IN cell each frame. Hidden when no
+       players are off-grid. */
+    #off-grid-staging {
+      position: absolute;
+      pointer-events: none;
+      z-index: 2;
+      display: none;
+      /* Two halves: puck stack on the outer half, directional arrow on
+         the inner (IN-cell-facing) half. Orientation flips between
+         flex-row (puck slot is LEFT of IN) and flex-column (puck slot
+         is ABOVE IN) so the arrow always points toward the IN cell.
+         Defaults are set per-orientation via the .edge-* modifiers. */
+      align-items: center;
+      justify-content: center;
+    }
+    #off-grid-staging.visible { display: flex; }
+    #off-grid-staging.edge-left  { flex-direction: row; }
+    #off-grid-staging.edge-right { flex-direction: row-reverse; }
+    #off-grid-staging.edge-top   { flex-direction: column; }
+    #off-grid-staging.edge-bottom{ flex-direction: column-reverse; }
+    /* Each half (.off-grid-pucks and .off-grid-cue) takes 50% of the
+       slot so the puck and arrow share the cell-sized box evenly. */
+    #off-grid-staging .off-grid-pucks,
+    #off-grid-staging .off-grid-cue {
+      flex: 0 0 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+    }
+    #off-grid-staging.edge-left  .off-grid-pucks { flex-direction: column; }
+    #off-grid-staging.edge-right .off-grid-pucks { flex-direction: column; }
+    #off-grid-staging.edge-top   .off-grid-pucks { flex-direction: row; }
+    #off-grid-staging.edge-bottom .off-grid-pucks { flex-direction: row; }
+    /* Arrow cue: a chunky green glyph pointing toward IN. The shape
+       (→ vs ↓) is set in JS via textContent so it tracks puckEdge. */
+    #off-grid-staging .off-grid-cue {
+      color: var(--in);
+      font-size: clamp(16px, 3vh, 30px);
+      font-weight: 700;
+      line-height: 1;
+      text-shadow: 0 0 6px rgba(16, 185, 129, 0.55);
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
+    }
+    #off-grid-staging .off-grid-puck {
+      /* Sized relative to the .off-grid-pucks half (so the puck looks
+         like a normal token without crowding the arrow). */
+      width: 100%;
+      height: 100%;
+      max-width: 80%;
+      max-height: 80%;
+      aspect-ratio: 1 / 1;
+      border-radius: 50%;
+      box-shadow:
+        0 0 0 2px rgba(250, 204, 21, 0.45),
+        0 0 10px rgba(250, 204, 21, 0.4),
+        0 2px 6px rgba(0, 0, 0, 0.55);
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      font-size: 11px;
+      color: #fff;
+      animation: off-grid-pulse 1.6s ease-in-out infinite;
+    }
+    /* Stack pucks tighter when more than one player is off-grid. */
+    #off-grid-staging.count-2 .off-grid-puck { max-width: 65%; max-height: 65%; }
+    #off-grid-staging.count-3 .off-grid-puck { max-width: 50%; max-height: 50%; }
+    #off-grid-staging .off-grid-puck.p1 { background: radial-gradient(circle at 30% 30%, #c4b5fd, #6d28d9); color: #fff; }
+    #off-grid-staging .off-grid-puck.p2 { background: radial-gradient(circle at 30% 30%, #fde68a, #b45309); color: #1f2937; }
+    #off-grid-staging .off-grid-puck.p3 { background: radial-gradient(circle at 30% 30%, #99f6e4, #0f766e); color: #fff; }
+    @keyframes off-grid-pulse {
+      0%, 100% { transform: scale(1);    opacity: 0.95; }
+      50%      { transform: scale(1.08); opacity: 1; }
+    }
+    /* Edge arrows pointing at IN (green, inward) and away from OUT
+       (red, outward). Each occupies a virtual cell-sized slot just
+       outside the grid on the closest edge to its target cell.
+       render() / updateInOutArrows() updates top/left/width/height/
+       textContent to track IN_CELL and OUT_CELL across levels. */
+    .board-arrow {
+      position: absolute;
+      pointer-events: none;
+      z-index: 2;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(18px, 3.5vh, 34px);
+      line-height: 1;
+      font-weight: 700;
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
+      transition: top 0.18s ease, left 0.18s ease;
+    }
+    .board-arrow.visible { display: flex; }
+    .board-arrow.in-arrow {
+      color: var(--in);
+      text-shadow: 0 0 6px rgba(16, 185, 129, 0.55);
+    }
+    .board-arrow.out-arrow {
+      color: var(--out);
+      text-shadow: 0 0 6px rgba(239, 68, 68, 0.55);
+    }
+    /* Rough cave-rock noise texture (inline SVG turbulence). */
+    #board-wrap::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.32;
+      mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400' preserveAspectRatio='none'><filter id='r'><feTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.10  0 0 0 0 0.06  0 0 0 0 0.03  0 0 0 0.7 0'/></filter><rect width='100%25' height='100%25' filter='url(%23r)'/></svg>");
+      background-size: 400px 400px;
+    }
+    /* Stalactite-style dripping silhouette across the top edge so the
+       cave reads as having a ceiling. */
+    #board-wrap::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 56px;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.65;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 56' preserveAspectRatio='none'><path d='M0,0 L0,18 L25,38 L45,10 L70,42 L95,14 L122,34 L150,6 L180,44 L210,20 L240,34 L270,12 L300,42 L330,18 L362,34 L390,10 L420,40 L450,16 L482,32 L510,10 L540,40 L570,18 L600,32 L600,0 Z' fill='%23000' fill-opacity='0.85'/></svg>");
+      background-size: 100% 100%;
+    }
+    /* Lift the actual playing grid above the cave texture overlays. */
+    #board { z-index: 1; }
+    #board {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      grid-template-rows: repeat(10, 1fr);
+      gap: 2px;
+      width: min(70vh, 100%);
+      aspect-ratio: 1 / 1;
+      /* Bold outer frame so the playfield perimeter reads at a glance
+         against the cave backdrop in every level. The cream tone matches
+         the rest of the UI accents and gets boosted in body.high-contrast
+         via --grid-border. The double-shadow underneath adds a subtle
+         dark halo so the bright frame keeps its contrast over light
+         hazard tiles. */
+      border: 3px solid var(--grid-border);
+      box-shadow:
+        0 0 0 1px rgba(0, 0, 0, 0.55),
+        0 0 14px rgba(0, 0, 0, 0.35);
+      margin: 0 auto;
+      background: var(--grid-line);
+      border-radius: 8px;
+      overflow: hidden;
+      user-select: none;
+      position: relative; /* anchor for #anim-token overlay during traverse animations */
+    }
+    /* LAYOUT_HALLWAY ("Hallway") reshapes the board into a 10×3
+       horizontal play area (rows 0–2, all 10 cols). The state grid is
+       still ROWS×COLS internally; CSS hides every cell at row >= 3.
+       The board uses explicit grid-column / grid-row on every cell
+       (set in buildBoard), so hidden cells don't reflow the visible
+       ones. Activated by body.corridor-mode, which is toggled on
+       whenever the active layout has corridor: true. */
+    body.corridor-mode #board {
+      grid-template-rows: repeat(3, 1fr);
+      aspect-ratio: 10 / 3;
+    }
+    body.corridor-mode .cell {
+      display: none;
+    }
+    body.corridor-mode .cell[data-r="0"],
+    body.corridor-mode .cell[data-r="1"],
+    body.corridor-mode .cell[data-r="2"] {
+      display: grid;
+    }
+    .cell {
+      background: var(--cell);
+      position: relative;
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      color: var(--muted);
+      cursor: default;
+      transition: background 80ms ease;
+    }
+    .cell .coord {
+      position: absolute;
+      top: 2px;
+      left: 4px;
+      font-size: 9px;
+      color: #2a3140;
+      pointer-events: none;
+      display: none;
+    }
+    body.edit-mode .cell .coord { display: block; }
+    .cell.in {
+      background: linear-gradient(180deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.10));
+      box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.55);
+    }
+    .cell.out {
+      background: linear-gradient(180deg, rgba(239, 68, 68, 0.25), rgba(239, 68, 68, 0.10));
+      box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.55);
+    }
+    .cell.legal { cursor: pointer; }
+    .cell.legal::after {
+      content: "";
+      position: absolute;
+      inset: 6px;
+      border-radius: 6px;
+      background: var(--legal);
+      pointer-events: none;
+    }
+    .cell.legal.p2::after { background: var(--legal-p2); }
+    .cell.legal.p3::after { background: var(--legal-p3); }
+    .cell.legal:hover { background: var(--cell-hover); }
+    .label {
+      position: absolute;
+      bottom: 3px;
+      right: 4px;
+      font-size: 9px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 700;
+      opacity: 0.85;
+    }
+    .cell.in .label { color: var(--in); }
+    .cell.out .label { color: var(--out); }
+
+    /* Environment cells */
+    .cell.env-slide {
+      background:
+        linear-gradient(
+          135deg,
+          rgba(56, 189, 248, 0.42) 0%,
+          rgba(56, 189, 248, 0.14) 100%
+        );
+      box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.75);
+    }
+    .cell.env-slide .env-glyph {
+      color: var(--slide);
+      text-shadow: 0 0 7px rgba(56, 189, 248, 0.85), 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+    .cell.env-knight {
+      background:
+        radial-gradient(ellipse at center, rgba(192, 132, 252, 0.30), rgba(192, 132, 252, 0.05) 70%);
+      box-shadow: inset 0 0 0 1px rgba(192, 132, 252, 0.55);
+    }
+    .cell.env-knight .env-glyph {
+      color: var(--knight);
+      text-shadow: 0 0 6px rgba(192, 132, 252, 0.6);
+    }
+
+    /* Green Knight: mirror of Knight (knight-jump but offset 1 cell to
+       the LEFT instead of right). Visually identical to Knight except
+       coloured green and the glyph is flipped horizontally so the user
+       can see it's a mirrored version at a glance. The glyph keeps the
+       base .env-glyph layout (display: grid; place-items: center) so
+       it sits in exactly the same spot and at the same size as the
+       regular knight glyph — only the horizontal flip is applied. */
+    .cell.env-green-knight {
+      background:
+        radial-gradient(ellipse at center, rgba(74, 222, 128, 0.30), rgba(34, 197, 94, 0.05) 70%);
+      box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.55);
+    }
+    .cell.env-green-knight .env-glyph {
+      color: #22c55e;
+      text-shadow: 0 0 6px rgba(74, 222, 128, 0.6);
+      transform: scaleX(-1);
+    }
+
+    /* River: flowing water that carries the player one cell at a time in
+       the direction set when the cell was placed. Visually a deep teal
+       cell with thin bright "stream-line" dashes that run PARALLEL to
+       the flow direction (long axis along flow, short cross-section)
+       and translate downstream so the water reads as moving.
+
+       The stream-lines are drawn on a `::before` pseudo so they can
+       stack over the base cell tint without fighting the river-arrow
+       overlay. The dash pattern is built from a parallel-to-flow
+       repeating gradient (which gives bright lanes running with the
+       flow) clipped by a perpendicular-to-flow mask (which breaks each
+       continuous lane into short dashes). Animating the mask position
+       along the flow axis makes the dashes appear to slide downstream
+       even though the underlying lane gradient is stationary. */
+    .cell.env-river {
+      position: relative;
+      background: rgba(8, 47, 73, 0.65);
+      box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.55);
+      overflow: hidden;
+    }
+    .cell.env-river::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;            /* sits below .river-arrow (z-index: 2) */
+    }
+    /* East/West rivers: horizontal lanes broken into dashes that slide
+       horizontally. Lane gradient varies along Y (0deg) so it paints
+       horizontal stripes running with +x flow; the mask gradient
+       varies along X (90deg) and is the part we animate. */
+    .cell.env-river.river-right::before,
+    .cell.env-river.river-left::before {
+      background-image: repeating-linear-gradient(
+        0deg,
+        transparent 0px,
+        transparent 5px,
+        rgba(165, 243, 252, 0.95) 5px,
+        rgba(165, 243, 252, 0.95) 7px,
+        transparent 7px,
+        transparent 13px
+      );
+      -webkit-mask-image: repeating-linear-gradient(
+        90deg,
+        #000 0px,
+        #000 9px,
+        transparent 9px,
+        transparent 18px
+      );
+              mask-image: repeating-linear-gradient(
+        90deg,
+        #000 0px,
+        #000 9px,
+        transparent 9px,
+        transparent 18px
+      );
+    }
+    /* North/South rivers: vertical lanes broken into dashes that slide
+       vertically. Lane gradient axis swapped — lanes run along Y for
+       +y/-y flow; mask axis is along Y as well so dashes slide with
+       the flow. */
+    .cell.env-river.river-up::before,
+    .cell.env-river.river-down::before {
+      background-image: repeating-linear-gradient(
+        90deg,
+        transparent 0px,
+        transparent 5px,
+        rgba(165, 243, 252, 0.95) 5px,
+        rgba(165, 243, 252, 0.95) 7px,
+        transparent 7px,
+        transparent 13px
+      );
+      -webkit-mask-image: repeating-linear-gradient(
+        0deg,
+        #000 0px,
+        #000 9px,
+        transparent 9px,
+        transparent 18px
+      );
+              mask-image: repeating-linear-gradient(
+        0deg,
+        #000 0px,
+        #000 9px,
+        transparent 9px,
+        transparent 18px
+      );
+    }
+    .cell.env-river.river-right::before { animation: river-flow-east  1.2s linear infinite; }
+    .cell.env-river.river-left::before  { animation: river-flow-west  1.2s linear infinite; }
+    .cell.env-river.river-down::before  { animation: river-flow-south 1.2s linear infinite; }
+    .cell.env-river.river-up::before    { animation: river-flow-north 1.2s linear infinite; }
+    /* The mask is animated (not the background) — sliding the cutout
+       windows along the flow axis exposes different parts of the
+       continuous lane gradient, creating the illusion of dashes
+       drifting downstream. */
+    @keyframes river-flow-east  {
+      from { -webkit-mask-position: 0    0; mask-position: 0    0; }
+      to   { -webkit-mask-position: 18px 0; mask-position: 18px 0; }
+    }
+    @keyframes river-flow-west  {
+      from { -webkit-mask-position: 0    0; mask-position: 0    0; }
+      to   { -webkit-mask-position: -18px 0; mask-position: -18px 0; }
+    }
+    @keyframes river-flow-south {
+      from { -webkit-mask-position: 0 0;    mask-position: 0 0;    }
+      to   { -webkit-mask-position: 0 18px; mask-position: 0 18px; }
+    }
+    @keyframes river-flow-north {
+      from { -webkit-mask-position: 0 0;     mask-position: 0 0;     }
+      to   { -webkit-mask-position: 0 -18px; mask-position: 0 -18px; }
+    }
+    .river-arrow {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 2;
+      color: #ecfeff;
+      font-size: clamp(14px, 2.6vw, 24px);
+      font-weight: 900;
+      text-shadow:
+        0 0 4px rgba(8, 47, 73, 0.95),
+        0 0 10px rgba(34, 211, 238, 0.7);
+    }
+
+    /* Lava: kills any creature that enters. Pushed rocks fill it (and turn
+       it into a boulder). Rendered as a 2D top-down view of a molten pool:
+       a bright orange/red molten body underneath, dark cooled-crust patches
+       floating on top, glowing yellow hot spots between them, and a slow
+       pulse on the rim glow to suggest heat shimmer. The volcano-shaped
+       emoji glyph is intentionally hidden so the cell reads as a flat
+       top-down surface rather than a side-profile mountain. */
+    .cell.env-lava {
+      position: relative;
+      background:
+        /* Bright yellow hot spots (molten cracks between crust pieces). */
+        radial-gradient(circle at 28% 32%, rgba(254, 240, 138, 0.75) 0%, rgba(254, 240, 138, 0) 14%),
+        radial-gradient(circle at 72% 66%, rgba(253, 224, 71, 0.65)  0%, rgba(253, 224, 71, 0)  16%),
+        radial-gradient(circle at 50% 88%, rgba(254, 215, 170, 0.55) 0%, rgba(254, 215, 170, 0) 18%),
+        /* Dark cooled crust patches floating on the molten surface. */
+        radial-gradient(circle at 82% 22%, rgba(40,  10, 4, 0.78) 0%, rgba(40,  10, 4, 0) 13%),
+        radial-gradient(circle at 18% 70%, rgba(40,  10, 4, 0.70) 0%, rgba(40,  10, 4, 0) 15%),
+        radial-gradient(circle at 60% 18%, rgba(40,  10, 4, 0.55) 0%, rgba(40,  10, 4, 0) 10%),
+        /* Molten body — bright orange center fading to deep red at edges. */
+        radial-gradient(ellipse at 50% 50%, #fb923c 0%, #ea580c 32%, #b91c1c 70%, #7f1d1d 100%);
+      box-shadow:
+        inset 0 0 0 1px rgba(254, 215, 60, 0.55),
+        inset 0 0 14px rgba(220, 38, 38, 0.45);
+      animation: env-lava-pulse 2.0s ease-in-out infinite;
+    }
+    .cell.env-lava .env-glyph { display: none; }
+    @keyframes env-lava-pulse {
+      0%, 100% { box-shadow: inset 0 0 0 1px rgba(254, 215, 60, 0.45),
+                              inset 0 0 12px rgba(220, 38, 38, 0.35); }
+      50%      { box-shadow: inset 0 0 0 2px rgba(254, 215, 60, 0.85),
+                              inset 0 0 20px rgba(220, 38, 38, 0.55); }
+    }
+
+    /* TnT: blow up the player */
+    .cell.env-tnt {
+      background:
+        radial-gradient(ellipse at 50% 50%, rgba(249, 115, 22, 0.55), rgba(127, 29, 29, 0.18) 70%);
+      box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.85);
+      animation: env-tnt-pulse 1.6s ease-in-out infinite;
+    }
+    .cell.env-tnt .env-glyph {
+      color: #fed7aa;
+      text-shadow: 0 0 9px rgba(249, 115, 22, 0.95), 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+    @keyframes env-tnt-pulse {
+      0%, 100% { box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.75); }
+      50%      { box-shadow: inset 0 0 0 2px rgba(249, 115, 22, 1),
+                              inset 0 0 16px rgba(249, 115, 22, 0.55); }
+    }
+
+    /* Button: an interactive pad that activates when a Player or Rock is
+       on the cell. Stays ON only while pressed; releases (and re-locks any
+       wired Lock targets) when both the player and the rock step off.
+       Rendered as a chunky red arcade-style button — a dark recessed
+       socket with a rounded-rectangle button cap that sits raised above
+       the floor while idle and is "pressed flat" into the socket when
+       active. The .button-on modifier (set in render() via
+       isButtonPressed) drives the depressed look. */
+    .cell.env-button {
+      /* Dark recessed socket. Slight gradient hints at the rim depth. */
+      background:
+        radial-gradient(ellipse at center, rgba(15, 23, 42, 0.55), rgba(15, 23, 42, 0.25) 75%);
+      box-shadow:
+        inset 0 0 0 1px rgba(127, 29, 29, 0.55),
+        inset 0  3px 5px rgba(0, 0, 0, 0.45);
+    }
+    /* The cap. A flat circular red button face with a thin bezel and a
+       subtle drop shadow — no gloss, no inner bevel, no sphere shading.
+       The .button-on modifier collapses the drop shadow so the cap reads
+       as "pressed flat" into the socket. transform-origin centered so
+       the press squishes the cap into the socket symmetrically. */
+    .cell.env-button::before {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -55%);
+      width: 64%; height: 64%;
+      /* Perfect circle. */
+      border-radius: 50%;
+      /* Flat red fill — single solid color, no gloss gradient. */
+      background: #dc2626;
+      /* Thin dark bezel for definition against the dark socket. */
+      border: 1px solid rgba(127, 29, 29, 0.9);
+      /* Simple drop shadow gives the cap a flat raised feel without
+         making it look spherical. */
+      box-shadow: 0 3px 0 #7f1d1d, 0 4px 5px rgba(0, 0, 0, 0.4);
+      transition: transform 0.12s ease-out, box-shadow 0.12s ease-out, background 0.12s ease-out;
+      pointer-events: none;
+    }
+    /* Pressed state: the cap drops flush with the socket and the drop
+       shadow collapses to a thin contact shadow. A faint amber outer
+       glow signals the button is "live" without changing its color. */
+    .cell.env-button.button-on::before {
+      transform: translate(-50%, -50%) scaleY(0.85);
+      background: #991b1b;
+      box-shadow:
+        /* Drop shadow gone — cap is "in the socket". */
+        0 0 0 #7f1d1d,
+        0 1px 2px rgba(0, 0, 0, 0.5),
+        /* Subtle "armed" glow. */
+        0 0 8px rgba(251, 191, 36, 0.5);
+    }
+    /* Socket rim glows softly when the button is pressed. */
+    .cell.env-button.button-on {
+      background:
+        radial-gradient(ellipse at center, rgba(127, 29, 29, 0.65), rgba(15, 23, 42, 0.30) 75%);
+      box-shadow:
+        inset 0 0 0 1px rgba(251, 191, 36, 0.55),
+        inset 0  3px 5px rgba(0, 0, 0, 0.55),
+        inset 0  0 10px rgba(251, 191, 36, 0.18);
+    }
+    /* Edit-mode wire highlights: dashed amber outline on the button being
+       wired, and on each of its target cells. .button-wire-target is added
+       to every wired target cell whenever edit mode is on, so the user can
+       always see which cells a button is hooked up to. */
+    .cell.button-wire-source {
+      outline: 2px dashed rgba(251, 191, 36, 0.9);
+      outline-offset: -3px;
+    }
+    .cell.button-wire-target {
+      outline: 2px dashed rgba(56, 189, 248, 0.75);
+      outline-offset: -3px;
+    }
+    /* Persistent "this button is wired" badge. Painted (in edit mode
+       only) on any button cell whose targets[] is non-empty, so a level
+       designer can see at a glance which buttons are hooked up vs.
+       orphaned. Small green check in the top-right corner of the cell. */
+    .cell.button-wired::after {
+      content: '✓';
+      position: absolute;
+      top: 1px;
+      right: 3px;
+      font-size: clamp(9px, 1.4vw, 12px);
+      font-weight: 800;
+      color: #34d399;
+      text-shadow:
+        0 0 4px rgba(52, 211, 153, 0.85),
+        0 1px 0 #0b1e15;
+      pointer-events: none;
+      z-index: 4;
+    }
+    /* One-shot "✓ Button wired" confirmation toast (fired when the user
+       clicks the source button a second time and there's >= 1 target).
+       Same green palette as the persistent badge so the two read as the
+       same status signal. */
+    .fx-wire-ok {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      font-weight: 800;
+      font-size: clamp(10px, 1.6vw, 14px);
+      color: #34d399;
+      background: rgba(6, 24, 17, 0.92);
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(52, 211, 153, 0.75);
+      box-shadow: 0 0 12px rgba(52, 211, 153, 0.45);
+      pointer-events: none;
+      z-index: 5;
+      white-space: nowrap;
+      animation: fx-pickup 1400ms ease-out forwards;
+    }
+    /* Warning twin: fired when the user clicks the source button again
+       with zero targets selected, so wiring isn't silently cancelled. */
+    .fx-wire-warn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      font-weight: 800;
+      font-size: clamp(10px, 1.6vw, 14px);
+      color: #fbbf24;
+      background: rgba(28, 18, 6, 0.92);
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(251, 191, 36, 0.75);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.45);
+      pointer-events: none;
+      z-index: 5;
+      white-space: nowrap;
+      animation: fx-pickup 1400ms ease-out forwards;
+    }
+
+    /* Wall cells are intentionally un-styled — the .wall-bar overlays
+       below carry the entire visual signal for which side(s) are
+       blocked, so the cell itself stays a neutral square. */
+    .cell.env-wall .env-glyph {
+      color: var(--wall);
+      text-shadow: 0 0 6px rgba(251, 146, 60, 0.65);
+      font-size: clamp(13px, 2.2vw, 20px);
+    }
+    /* Directional block bars. Each blocked side gets its own absolutely-
+       positioned span so 1–4 sides can be drawn simultaneously. */
+    .wall-bar {
+      position: absolute;
+      pointer-events: none;
+      background: var(--wall);
+      box-shadow: 0 0 6px rgba(251, 146, 60, 0.55);
+      z-index: 2;
+    }
+    .wall-bar.up    { top: 0;    left: 0; right: 0;  height: 6px; }
+    .wall-bar.down  { bottom: 0; left: 0; right: 0;  height: 6px; }
+    .wall-bar.left  { top: 0;    left: 0; bottom: 0; width: 6px; }
+    .wall-bar.right { top: 0;    right: 0; bottom: 0; width: 6px; }
+
+    /* Locked cell overlay: a steel cage that descends from above, blocking
+       all entry. Drawn as four vertical bars + a top header so the
+       underlying env / item is still legible behind it. The cage drops in
+       on placement (.descend) and retracts up on removal (.ascend). */
+    .lock-cage {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 3;
+      transform-origin: top center;
+    }
+    .lock-cage .lock-frame {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 5px;
+      background: linear-gradient(180deg, #cbd5e1, #64748b);
+      border-bottom: 1px solid rgba(15, 23, 42, 0.6);
+      box-shadow: 0 0 6px rgba(148, 163, 184, 0.7);
+    }
+    .lock-cage .lock-bar {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: linear-gradient(180deg, #cbd5e1 0%, #94a3b8 60%, #475569 100%);
+      box-shadow: 0 0 4px rgba(148, 163, 184, 0.55);
+    }
+    .lock-cage .lock-bar.b1 { left: 18%; }
+    .lock-cage .lock-bar.b2 { left: 38%; }
+    .lock-cage .lock-bar.b3 { left: 58%; }
+    .lock-cage .lock-bar.b4 { left: 78%; }
+    .lock-cage .lock-glyph {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: var(--lock);
+      font-size: clamp(13px, 2.0vw, 18px);
+      text-shadow: 0 0 6px rgba(148, 163, 184, 0.7);
+      font-weight: 900;
+    }
+    .lock-cage.descend { animation: lock-descend 320ms ease-out both; }
+    .lock-cage.ascend  { animation: lock-ascend  320ms ease-in  both; }
+    @keyframes lock-descend {
+      0%   { transform: translateY(-100%); opacity: 0.0; }
+      60%  { transform: translateY(4%);    opacity: 1.0; }
+      100% { transform: translateY(0);     opacity: 1.0; }
+    }
+    @keyframes lock-ascend {
+      0%   { transform: translateY(0);     opacity: 1.0; }
+      100% { transform: translateY(-100%); opacity: 0.0; }
+    }
+
+    /* Button-held-open: a pressed button wired to this lock keeps the
+       cage's bars retracted so the cell is visually marked as passable.
+       The frame stays put (the lock mechanism is still THERE), the four
+       bars slide up out of the way, and the lock glyph fades so the
+       difference from a true-closed cage reads at a glance. The .lift
+       and .drop modifiers are one-shot keyframes fired on the
+       OFF\u2192ON / ON\u2192OFF transitions so the bars visibly slide rather
+       than snapping between states. The bar transform stacks with the
+       cage's own translateY, so this composes cleanly with the descend
+       animation if both happen on the same render (e.g. a custom layout
+       that places a rock on a button and a lock target on the same
+       level\u2014the cage drops in then the bars immediately retract). */
+    .lock-cage.held-open .lock-bar  { transform: translateY(-85%); }
+    .lock-cage.held-open .lock-glyph { opacity: 0.35; filter: saturate(0.4); }
+    .lock-cage.lift .lock-bar  { animation: lock-bar-lift 320ms ease-out both; }
+    .lock-cage.lift .lock-glyph { animation: lock-glyph-dim 320ms ease-out both; }
+    .lock-cage.drop .lock-bar  { animation: lock-bar-drop 320ms ease-in  both; }
+    .lock-cage.drop .lock-glyph { animation: lock-glyph-undim 320ms ease-in both; }
+    @keyframes lock-bar-lift {
+      0%   { transform: translateY(0); }
+      100% { transform: translateY(-85%); }
+    }
+    @keyframes lock-bar-drop {
+      0%   { transform: translateY(-85%); }
+      100% { transform: translateY(0); }
+    }
+    @keyframes lock-glyph-dim {
+      0%   { opacity: 1.0; filter: saturate(1.0); }
+      100% { opacity: 0.35; filter: saturate(0.4); }
+    }
+    @keyframes lock-glyph-undim {
+      0%   { opacity: 0.35; filter: saturate(0.4); }
+      100% { opacity: 1.0;  filter: saturate(1.0); }
+    }
+
+    /* Key pickup: a small golden key that sits on the cell. Stackable on
+       pickup. Spiders treat keys as ordinary terrain (they walk over them
+       without consuming or interacting). */
+    .key-item {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+      user-select: none;
+      z-index: 1;
+      color: var(--key);
+      font-size: clamp(13px, 2.2vw, 22px);
+      text-shadow: 0 0 6px rgba(251, 191, 36, 0.7);
+      animation: key-pulse 2.0s ease-in-out infinite;
+    }
+    @keyframes key-pulse {
+      0%, 100% { transform: scale(1);    opacity: 0.95; }
+      50%      { transform: scale(1.10); opacity: 1; }
+    }
+
+    /* Purple Portal: looks like a wall, but in fuchsia, with a single dashed bar
+       on the side that opens the portal. Walking through that bar (in the bar's
+       facing direction) teleports the player to the partner portal. */
+    .cell.env-portal {
+      background:
+        repeating-linear-gradient(
+          45deg,
+          rgba(217, 70, 239, 0.35) 0px,
+          rgba(217, 70, 239, 0.35) 4px,
+          rgba(217, 70, 239, 0.12) 4px,
+          rgba(217, 70, 239, 0.12) 10px
+        );
+      box-shadow: inset 0 0 0 1px rgba(217, 70, 239, 0.8);
+    }
+    .cell.env-portal .env-glyph {
+      color: var(--portal);
+      text-shadow: 0 0 7px rgba(217, 70, 239, 0.95), 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+    /* Dashed portal bar: same geometry as the wall-bar, but a dashed fuchsia
+       pattern with a soft glow that follows the painted dashes. */
+    .portal-bar {
+      position: absolute;
+      pointer-events: none;
+      z-index: 2;
+      filter: drop-shadow(0 0 4px rgba(217, 70, 239, 0.65));
+    }
+    .portal-bar.up,
+    .portal-bar.down {
+      left: 0; right: 0; height: 6px;
+      background: repeating-linear-gradient(to right,
+        var(--portal) 0 6px, transparent 6px 11px);
+    }
+    .portal-bar.up   { top: 0; }
+    .portal-bar.down { bottom: 0; }
+    .portal-bar.left,
+    .portal-bar.right {
+      top: 0; bottom: 0; width: 6px;
+      background: repeating-linear-gradient(to bottom,
+        var(--portal) 0 6px, transparent 6px 11px);
+    }
+    .portal-bar.left  { left: 0; }
+    .portal-bar.right { right: 0; }
+
+    /* Yellow Portal: identical mechanics to the purple portal, just a
+       different color so the two pairs are visually distinct on the same
+       board. Same 45° stripe + dashed bar treatment, recolored to yellow. */
+    .cell.env-portal-y {
+      background:
+        repeating-linear-gradient(
+          45deg,
+          rgba(253, 224, 71, 0.35) 0px,
+          rgba(253, 224, 71, 0.35) 4px,
+          rgba(253, 224, 71, 0.12) 4px,
+          rgba(253, 224, 71, 0.12) 10px
+        );
+      box-shadow: inset 0 0 0 1px rgba(253, 224, 71, 0.85);
+    }
+    .cell.env-portal-y .env-glyph {
+      color: var(--portal-y);
+      text-shadow: 0 0 7px rgba(253, 224, 71, 0.95), 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+    .portal-bar.yellow {
+      filter: drop-shadow(0 0 4px rgba(253, 224, 71, 0.75));
+    }
+    .portal-bar.yellow.up,
+    .portal-bar.yellow.down {
+      background: repeating-linear-gradient(to right,
+        var(--portal-y) 0 6px, transparent 6px 11px);
+    }
+    .portal-bar.yellow.left,
+    .portal-bar.yellow.right {
+      background: repeating-linear-gradient(to bottom,
+        var(--portal-y) 0 6px, transparent 6px 11px);
+    }
+
+    /* Blue Portal: third color of teleport gate. Identical mechanics to
+       the purple/yellow portals — same exit-via-bar rule, same slide
+       auto-teleport — pairs only with another blue portal. */
+    .cell.env-portal-b {
+      background:
+        repeating-linear-gradient(
+          45deg,
+          rgba(59, 130, 246, 0.38) 0px,
+          rgba(59, 130, 246, 0.38) 4px,
+          rgba(59, 130, 246, 0.13) 4px,
+          rgba(59, 130, 246, 0.13) 10px
+        );
+      box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.85);
+    }
+    .cell.env-portal-b .env-glyph {
+      color: var(--portal-b);
+      text-shadow: 0 0 7px rgba(59, 130, 246, 0.95), 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+    .portal-bar.blue {
+      filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.75));
+    }
+    .portal-bar.blue.up,
+    .portal-bar.blue.down {
+      background: repeating-linear-gradient(to right,
+        var(--portal-b) 0 6px, transparent 6px 11px);
+    }
+    .portal-bar.blue.left,
+    .portal-bar.blue.right {
+      background: repeating-linear-gradient(to bottom,
+        var(--portal-b) 0 6px, transparent 6px 11px);
+    }
+
+    /* Red Portal: fourth color of teleport gate. Identical mechanics to
+       the other portals — pairs only with another red portal. The rose
+       hue is intentionally pinker than lava so the two read as distinct
+       even at a glance. */
+    .cell.env-portal-r {
+      background:
+        repeating-linear-gradient(
+          45deg,
+          rgba(244, 63, 94, 0.38) 0px,
+          rgba(244, 63, 94, 0.38) 4px,
+          rgba(244, 63, 94, 0.13) 4px,
+          rgba(244, 63, 94, 0.13) 10px
+        );
+      box-shadow: inset 0 0 0 1px rgba(244, 63, 94, 0.85);
+    }
+    .cell.env-portal-r .env-glyph {
+      color: var(--portal-r);
+      text-shadow: 0 0 7px rgba(244, 63, 94, 0.95), 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+    .portal-bar.red {
+      filter: drop-shadow(0 0 4px rgba(244, 63, 94, 0.75));
+    }
+    .portal-bar.red.up,
+    .portal-bar.red.down {
+      background: repeating-linear-gradient(to right,
+        var(--portal-r) 0 6px, transparent 6px 11px);
+    }
+    .portal-bar.red.left,
+    .portal-bar.red.right {
+      background: repeating-linear-gradient(to bottom,
+        var(--portal-r) 0 6px, transparent 6px 11px);
+    }
+
+    /* Green Portal: fifth color of teleport gate. Identical mechanics to
+       the other portals — same exit-via-bar rule, same slide
+       auto-teleport — pairs only with another green portal. The emerald
+       hue is intentionally shifted away from the green-knight token so
+       the two greens read as distinct on a busy board. */
+    .cell.env-portal-g {
+      background:
+        repeating-linear-gradient(
+          45deg,
+          rgba(34, 197, 94, 0.38) 0px,
+          rgba(34, 197, 94, 0.38) 4px,
+          rgba(34, 197, 94, 0.13) 4px,
+          rgba(34, 197, 94, 0.13) 10px
+        );
+      box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.85);
+    }
+    .cell.env-portal-g .env-glyph {
+      color: var(--portal-g);
+      text-shadow: 0 0 7px rgba(34, 197, 94, 0.95), 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+    .portal-bar.green {
+      filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.75));
+    }
+    .portal-bar.green.up,
+    .portal-bar.green.down {
+      background: repeating-linear-gradient(to right,
+        var(--portal-g) 0 6px, transparent 6px 11px);
+    }
+    .portal-bar.green.left,
+    .portal-bar.green.right {
+      background: repeating-linear-gradient(to bottom,
+        var(--portal-g) 0 6px, transparent 6px 11px);
+    }
+
+    /* Boulder: a wall variant with all four sides blocked. Players cannot
+       enter via traverse; only via jump moves (knight, portal). The art is
+       designed to look like a chunky rounded-square rock that fills
+       most of the cell. The rock spills 1px into the grid gap so two
+       adjacent boulders read as one continuous stone mass with only a
+       subtle joint line between them. */
+    /* Boulder: an obstacle that physically occupies the cell. Walkers can't
+       enter via traverse; only via jump moves (knight, portal). The art uses
+       a single 10x10-cell-wide stone composition that every boulder cell
+       slices into via background-position, so adjacent boulders show
+       continuous, perfectly aligned texture. The slice offset for each
+       cell is set in JS as --bx / --by (see render()). Step 1 of the
+       boulder rework — outer-edge roughness comes later. */
+    .cell.env-boulder {
+      /* Cell base sits underneath the rock; near-black neutral so the 2px
+         grid gap that peeks past the ::before on adjacent boulders reads
+         as a tight crack between stones rather than a glowing edge. */
+      background: #0f1115;
+      box-shadow: none;
+    }
+    .cell.env-boulder::before {
+      content: "";
+      position: absolute;
+      /* Negative inset so the rock spills 1px into each side of the 2px
+         grid gap; two adjacent boulders therefore overlap in the gap and
+         visually fuse. The slight scale mismatch from this overhang
+         (~4% of a cell) is invisible against the smooth gradient slices. */
+      inset: -1px;
+      border-radius: 0; /* outer-edge rounding handled in step 3 */
+      /* One continuous stone composition spanning all 10x10 cells. The
+         large radial blobs and the diagonal base gradient are positioned
+         in the FULL image's coordinate space, so cell-level slicing via
+         background-position is what makes adjacent cells look like one
+         rock. */
+      background-image:
+        radial-gradient(circle at 18% 22%, rgba(226, 232, 240, 0.32) 0%, transparent 14%),
+        radial-gradient(circle at 82% 32%, rgba(15, 17, 21, 0.55)   0%, transparent 16%),
+        radial-gradient(circle at 38% 58%, rgba(15, 17, 21, 0.45)   0%, transparent 18%),
+        radial-gradient(circle at 72% 78%, rgba(241, 245, 249, 0.22) 0%, transparent 14%),
+        radial-gradient(circle at 50% 50%, rgba(30, 34, 42, 0.30)   0%, transparent 22%),
+        linear-gradient(160deg, #94a3b8 0%, #4b5563 50%, #1f2937 100%);
+      background-size: 1000% 1000%;
+      background-repeat: no-repeat;
+      background-position: var(--bx, 0%) var(--by, 0%);
+      /* Step 2/3 of the boulder rework. Each boulder cell's ::before is
+         clipped to a polygon set per-cell in JS via --b-clip. The polygon
+         retracts on sides that face NON-boulder neighbors (giving the
+         boulder mass a chunky, jagged outer edge) and stays flush on
+         sides that face other boulders (so adjacent boulders fuse into
+         one continuous rock with no visible seam). */
+      clip-path: var(--b-clip, none);
+      box-shadow:
+        inset 0 -3px 6px rgba(0, 0, 0, 0.55),
+        inset 0 2px 4px rgba(226, 232, 240, 0.18);
+      pointer-events: none;
+    }
+    .cell.env-boulder .env-glyph { display: none; }
+
+    /* Tree: a passable obscuring tile. Players and spiders move through
+       trees freely (no traversal block), but the leaves visually cover
+       any items resting underneath, AND players standing on a tree cell
+       are invisible to spiders (no chase, no collision). The art is a
+       dense stipple of small leaf-sized radial highlights over a dark
+       canopy gradient, with a scalloped clip-path silhouette that gives
+       the cell a leafy/lobed outline instead of a flat square. */
+    .cell.env-tree {
+      background: transparent;
+      box-shadow: none;
+    }
+    .cell.env-tree::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      /* Many small leaf-sized highlights so the canopy reads as a
+         crowd of individual leaves rather than a smooth blob. Each is
+         a tight radial gradient (3–5px) at a hand-placed coordinate. */
+      background-image:
+        radial-gradient(circle 3px at 14% 16%, rgba(187, 247, 208, 0.85), transparent 70%),
+        radial-gradient(circle 4px at 28% 10%, rgba(134, 239, 172, 0.80), transparent 70%),
+        radial-gradient(circle 3px at 42% 18%, rgba(74,  222, 128, 0.85), transparent 70%),
+        radial-gradient(circle 4px at 58% 12%, rgba(187, 247, 208, 0.75), transparent 70%),
+        radial-gradient(circle 3px at 74% 18%, rgba(74,  222, 128, 0.85), transparent 70%),
+        radial-gradient(circle 4px at 88% 12%, rgba(134, 239, 172, 0.80), transparent 70%),
+        radial-gradient(circle 4px at 10% 32%, rgba(134, 239, 172, 0.75), transparent 70%),
+        radial-gradient(circle 3px at 22% 38%, rgba(74,  222, 128, 0.85), transparent 70%),
+        radial-gradient(circle 4px at 36% 30%, rgba(187, 247, 208, 0.75), transparent 70%),
+        radial-gradient(circle 3px at 50% 38%, rgba(74,  222, 128, 0.85), transparent 70%),
+        radial-gradient(circle 4px at 64% 32%, rgba(134, 239, 172, 0.80), transparent 70%),
+        radial-gradient(circle 3px at 78% 38%, rgba(74,  222, 128, 0.85), transparent 70%),
+        radial-gradient(circle 4px at 90% 32%, rgba(187, 247, 208, 0.70), transparent 70%),
+        radial-gradient(circle 3px at 12% 52%, rgba(74,  222, 128, 0.85), transparent 70%),
+        radial-gradient(circle 4px at 26% 56%, rgba(134, 239, 172, 0.80), transparent 70%),
+        radial-gradient(circle 3px at 40% 52%, rgba(187, 247, 208, 0.70), transparent 70%),
+        radial-gradient(circle 4px at 54% 58%, rgba(74,  222, 128, 0.85), transparent 70%),
+        radial-gradient(circle 3px at 68% 52%, rgba(134, 239, 172, 0.80), transparent 70%),
+        radial-gradient(circle 4px at 82% 58%, rgba(74,  222, 128, 0.85), transparent 70%),
+        radial-gradient(circle 3px at 14% 72%, rgba(134, 239, 172, 0.75), transparent 70%),
+        radial-gradient(circle 4px at 28% 78%, rgba(74,  222, 128, 0.85), transparent 70%),
+        radial-gradient(circle 3px at 44% 72%, rgba(187, 247, 208, 0.70), transparent 70%),
+        radial-gradient(circle 4px at 58% 80%, rgba(74,  222, 128, 0.85), transparent 70%),
+        radial-gradient(circle 3px at 72% 76%, rgba(134, 239, 172, 0.80), transparent 70%),
+        radial-gradient(circle 4px at 86% 80%, rgba(74,  222, 128, 0.85), transparent 70%),
+        radial-gradient(circle 4px at 18% 90%, rgba(134, 239, 172, 0.75), transparent 70%),
+        radial-gradient(circle 3px at 36% 92%, rgba(74,  222, 128, 0.85), transparent 70%),
+        radial-gradient(circle 4px at 54% 90%, rgba(187, 247, 208, 0.65), transparent 70%),
+        radial-gradient(circle 3px at 72% 92%, rgba(74,  222, 128, 0.85), transparent 70%),
+        /* Deep-shadow patches between leaves to add depth + crowding. */
+        radial-gradient(circle 6px at 32% 48%, rgba(6, 40, 22, 0.55),   transparent 75%),
+        radial-gradient(circle 7px at 66% 62%, rgba(6, 40, 22, 0.50),   transparent 75%),
+        radial-gradient(circle 6px at 48% 22%, rgba(6, 40, 22, 0.40),   transparent 75%),
+        /* Dark canopy base. */
+        linear-gradient(160deg, #166534 0%, #14532d 60%, #0c3520 100%);
+      background-repeat: no-repeat;
+      /* Scalloped/lobed silhouette so the tree no longer reads as a
+         square. ~30 polygon points create rough bumpy edges that look
+         like leaf tips overlapping the cell boundary. */
+      clip-path: polygon(
+        50%   0%,  58%   5%,  66%   1%,  74%   6%,  84%   2%,  92%   8%,
+        99%  16%,  95%  26%, 100%  36%,  96%  46%, 100%  56%,  95%  66%,
+        99%  76%,  94%  86%,  98%  94%,  88%  98%,  78% 100%,  68%  95%,
+        58%  99%,  50%  94%,  42%  99%,  32%  95%,  22% 100%,  12%  98%,
+         2%  94%,   6%  86%,   1%  76%,   5%  66%,   0%  56%,   4%  46%,
+         0%  36%,   5%  26%,   1%  16%,   8%   8%,  16%   2%,  26%   6%,
+        34%   1%,  42%   5%
+      );
+      filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
+      pointer-events: none;
+    }
+    /* A second pseudo carries the inner shadow + a few brighter tip
+       highlights, so the depth treatment lives on top of the clipped
+       canopy without fighting the leaf stipple. */
+    .cell.env-tree::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(circle 2px at 20% 8%,  rgba(240, 253, 244, 0.85), transparent 75%),
+        radial-gradient(circle 2px at 50% 4%,  rgba(240, 253, 244, 0.75), transparent 75%),
+        radial-gradient(circle 2px at 80% 8%,  rgba(240, 253, 244, 0.85), transparent 75%),
+        radial-gradient(circle 2px at 36% 26%, rgba(240, 253, 244, 0.65), transparent 75%),
+        radial-gradient(circle 2px at 64% 30%, rgba(240, 253, 244, 0.65), transparent 75%);
+      background-repeat: no-repeat;
+      clip-path: polygon(
+        50%   0%,  58%   5%,  66%   1%,  74%   6%,  84%   2%,  92%   8%,
+        99%  16%,  95%  26%, 100%  36%,  96%  46%, 100%  56%,  95%  66%,
+        99%  76%,  94%  86%,  98%  94%,  88%  98%,  78% 100%,  68%  95%,
+        58%  99%,  50%  94%,  42%  99%,  32%  95%,  22% 100%,  12%  98%,
+         2%  94%,   6%  86%,   1%  76%,   5%  66%,   0%  56%,   4%  46%,
+         0%  36%,   5%  26%,   1%  16%,   8%   8%,  16%   2%,  26%   6%,
+        34%   1%,  42%   5%
+      );
+      box-shadow:
+        inset 0 -4px 6px rgba(0, 0, 0, 0.45),
+        inset 0  2px 3px rgba(187, 247, 208, 0.20);
+      pointer-events: none;
+    }
+    /* Items + glyphs hide under the canopy (chest, cake, key, env-glyph,
+       rock). Locks are NOT hidden — the lock cage is a barrier the
+       player needs to see. Spiders remain fully visible on top (they
+       are gameplay-critical hazards). Players standing on a tree are
+       partly obscured by the canopy: their token is dimmed and tinted
+       green so the leaves clearly cover them, matching the "hidden
+       under the leaves" rule. Pickup toasts (.fx-pickup, .fx-info) are
+       excluded so the "Cake! +100" etc. floaters still fire when the
+       player picks up an item from under a tree. */
+    .cell.env-tree .env-glyph,
+    .cell.env-tree .weapon:not(.fx-pickup),
+    .cell.env-tree .cake:not(.fx-pickup),
+    .cell.env-tree .key-item:not(.fx-pickup),
+    .cell.env-tree .rock:not(.fx-pickup) { display: none; }
+    .cell.env-tree .token {
+      opacity: 0.32;
+      filter: saturate(0.55) brightness(0.65) hue-rotate(40deg);
+    }
+    /* Keep the armed-halo readable even through the canopy by clipping
+       the dim filter to the token body itself. The "armed" pulse glow
+       is part of .token's box-shadow, so the opacity above naturally
+       fades it — that's fine. The sword corner badge is left dimmed
+       too so the player reads as fully obscured. */
+
+    /* Rock: a movable obstacle that lives in its own state layer
+       (state.rocks[r][c]). Drawn as a real .rock DOM child so it can sit
+       on top of any underlying env (slide, knight, etc.) without pseudo
+       conflicts and so push displacements stay non-destructive: pushing
+       a rock off a slide cell leaves the slide intact. The rock visual
+       sits as a single chunky pebble in the middle of the cell with a
+       drop shadow, so it reads as "an object on a tile" — in contrast
+       to boulders, which fill the whole tile with continuous stone. */
+    .cell .rock {
+      position: absolute;
+      /* Square rock that fully covers the cell — used to hide the OUT cell
+         on LAYOUT_NO_WAY_OUT ("No Way Out"). z-index 4 paints above the cell's
+         own background AND above the .label child (which has no z-index),
+         so neither the red OUT gradient nor the "OUT" corner label leaks
+         through. The opaque linear gradient is the bottom layer of the
+         background stack, ensuring full opacity across the whole face. */
+      inset: 0;
+      border-radius: 0;
+      background:
+        radial-gradient(ellipse at 32% 28%, rgba(255, 240, 220, 0.32) 0%, transparent 38%),
+        radial-gradient(ellipse at 70% 72%, rgba(15, 10, 7, 0.40) 0%, transparent 44%),
+        linear-gradient(160deg, #9a8a7c 0%, #6d5e52 55%, #4a4038 100%);
+      box-shadow:
+        inset 0 -4px 6px rgba(0, 0, 0, 0.55),
+        inset 0 2px 4px rgba(255, 240, 220, 0.25),
+        inset 0 0 0 1px rgba(15, 10, 7, 0.55);
+      pointer-events: none;
+      z-index: 4;
+    }
+
+    /* Rock sitting on a Button (state.env === 'button'). The rock fully
+       covers the cell — which would otherwise hide the ::before-painted
+       button cap — so we tag the rock with .on-button and ride an outer
+       red glow on top of the base inset shadows. Reads as "this rock is
+       holding the button down." The glow is bright enough to be visible
+       against the dark cell background but doesn't bleed into adjacent
+       cells. Painted with a layered box-shadow so the base rock relief
+       (inset shadows above) stays intact underneath. */
+    .cell .rock.on-button {
+      box-shadow:
+        inset 0 -4px 6px rgba(0, 0, 0, 0.55),
+        inset 0 2px 4px rgba(255, 240, 220, 0.25),
+        inset 0 0 0 1px rgba(15, 10, 7, 0.55),
+        0 0 0 2px rgba(244, 63, 94, 0.85),
+        0 0 14px 5px rgba(244, 63, 94, 0.7);
+    }
+
+    /* Rock sitting on a Portal (state.env starts with 'portal'). The
+       full-cell rock would hide the portal stripes + dashed exit bar,
+       which the player needs to see to know which way another shove
+       will teleport the rock. We shrink the rock toward the cell
+       center and round it so the surrounding portal art reads as a
+       border ring. The .portal-bar child stays anchored on the cell
+       edge and is no longer occluded since the rock no longer reaches
+       the edges. Per-color variants below tint the rock ring to match
+       the portal hue so the rock visually inherits the gate it's
+       sitting in. */
+    .cell .rock.on-portal {
+      inset: 18%;
+      border-radius: 28%;
+    }
+    /* Per-color portal rims. Each rule overlays a colored outer ring on
+       the shrunken rock matching its portal color. The base inset
+       shadows stay so the rock still reads as 3D. */
+    .cell .rock.on-portal.on-portal {
+      /* Purple portal (the un-prefixed 'portal' key in state.env). */
+      box-shadow:
+        inset 0 -4px 6px rgba(0, 0, 0, 0.55),
+        inset 0 2px 4px rgba(255, 240, 220, 0.25),
+        inset 0 0 0 1px rgba(15, 10, 7, 0.55),
+        0 0 0 2px rgba(217, 70, 239, 0.85),
+        0 0 10px 3px rgba(217, 70, 239, 0.55);
+    }
+    .cell .rock.on-portal.on-portal-y {
+      box-shadow:
+        inset 0 -4px 6px rgba(0, 0, 0, 0.55),
+        inset 0 2px 4px rgba(255, 240, 220, 0.25),
+        inset 0 0 0 1px rgba(15, 10, 7, 0.55),
+        0 0 0 2px rgba(253, 224, 71, 0.9),
+        0 0 10px 3px rgba(253, 224, 71, 0.6);
+    }
+    .cell .rock.on-portal.on-portal-b {
+      box-shadow:
+        inset 0 -4px 6px rgba(0, 0, 0, 0.55),
+        inset 0 2px 4px rgba(255, 240, 220, 0.25),
+        inset 0 0 0 1px rgba(15, 10, 7, 0.55),
+        0 0 0 2px rgba(59, 130, 246, 0.9),
+        0 0 10px 3px rgba(59, 130, 246, 0.6);
+    }
+    .cell .rock.on-portal.on-portal-r {
+      box-shadow:
+        inset 0 -4px 6px rgba(0, 0, 0, 0.55),
+        inset 0 2px 4px rgba(255, 240, 220, 0.25),
+        inset 0 0 0 1px rgba(15, 10, 7, 0.55),
+        0 0 0 2px rgba(244, 63, 94, 0.9),
+        0 0 10px 3px rgba(244, 63, 94, 0.6);
+    }
+    .cell .rock.on-portal.on-portal-g {
+      box-shadow:
+        inset 0 -4px 6px rgba(0, 0, 0, 0.55),
+        inset 0 2px 4px rgba(255, 240, 220, 0.25),
+        inset 0 0 0 1px rgba(15, 10, 7, 0.55),
+        0 0 0 2px rgba(34, 197, 94, 0.9),
+        0 0 10px 3px rgba(34, 197, 94, 0.6);
+    }
+
+    /* Animated traverse token: a single floating overlay that slides smoothly
+       across cells while the underlying state mutates. Positioned and sized
+       in JS at animation start so it perfectly matches the token style. */
+    #anim-token {
+      position: absolute;
+      pointer-events: none;
+      z-index: 6;
+      border-radius: 50%;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      transition: left 140ms linear, top 140ms linear;
+    }
+    #anim-token.p1 { background: radial-gradient(circle at 30% 30%, #c4b5fd, #6d28d9); color: #fff; }
+    #anim-token.p2 { background: radial-gradient(circle at 30% 30%, #fde68a, #b45309); color: #1f2937; }
+    #anim-token.p3 { background: radial-gradient(circle at 30% 30%, #99f6e4, #0f766e); color: #fff; }
+
+    /* FX: TRAPPED! overlay */
+    @keyframes fx-trapped {
+      0%   { transform: translate(-50%, -50%) scale(0.3) rotate(-6deg); opacity: 0; }
+      18%  { transform: translate(-50%, -50%) scale(1.4) rotate(2deg);  opacity: 1; }
+      55%  { transform: translate(-50%, -50%) scale(1.0) rotate(0deg);  opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1.1) rotate(0deg);  opacity: 0; }
+    }
+    .fx-trapped {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      font-weight: 900;
+      font-size: clamp(9px, 1.5vw, 13px);
+      color: #fde047;
+      letter-spacing: 0.12em;
+      text-shadow: 0 0 8px rgba(250, 204, 21, 0.9), 0 1px 2px rgba(0, 0, 0, 0.7);
+      pointer-events: none;
+      z-index: 5;
+      white-space: nowrap;
+      animation: fx-trapped 1400ms ease-out forwards;
+    }
+
+    /* FX: BOOM! overlay */
+    @keyframes fx-boom-burst {
+      0%   { transform: translate(-50%, -50%) scale(0);   opacity: 1; }
+      55%  { transform: translate(-50%, -50%) scale(2.2); opacity: 0.9; }
+      100% { transform: translate(-50%, -50%) scale(2.8); opacity: 0; }
+    }
+    @keyframes fx-boom-text {
+      0%   { transform: translate(-50%, -50%) scale(0.4) rotate(-10deg); opacity: 0; }
+      20%  { transform: translate(-50%, -50%) scale(1.5) rotate(-4deg);  opacity: 1; }
+      70%  { transform: translate(-50%, -50%) scale(1.1) rotate(0deg);   opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1.0) rotate(0deg);   opacity: 0; }
+    }
+    .fx-boom {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .fx-boom .burst {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 60%; height: 60%;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle, #fff 0%, #fde047 25%, #f97316 55%, #ef4444 80%, transparent 100%);
+      animation: fx-boom-burst var(--fx-boom-dur) ease-out forwards;
+    }
+    .fx-boom .text {
+      position: absolute;
+      top: 50%; left: 50%;
+      font-weight: 900;
+      font-size: clamp(10px, 1.7vw, 15px);
+      color: #fff;
+      letter-spacing: 0.14em;
+      text-shadow: 0 0 8px #ef4444, 0 1px 2px rgba(0, 0, 0, 0.85);
+      animation: fx-boom-text var(--fx-boom-dur) ease-out forwards;
+    }
+
+    /* FX: LAVA KILL — a player or spider stepping into lava. Same beat
+       as BOOM (radial flash + bouncy text) but tuned to lava colors and
+       with the snake-hiss text "SSSSS!" so it reads as a separate cause
+       of death (the rock-into-lava case still uses the gentler SIZZLE). */
+    @keyframes fx-lavakill-burst {
+      0%   { transform: translate(-50%, -50%) scale(0);   opacity: 1; }
+      55%  { transform: translate(-50%, -50%) scale(2.2); opacity: 0.9; }
+      100% { transform: translate(-50%, -50%) scale(2.8); opacity: 0; }
+    }
+    @keyframes fx-lavakill-text {
+      0%   { transform: translate(-50%, -50%) scale(0.4) rotate(-10deg); opacity: 0; }
+      20%  { transform: translate(-50%, -50%) scale(1.5) rotate(-4deg);  opacity: 1; }
+      70%  { transform: translate(-50%, -50%) scale(1.1) rotate(0deg);   opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1.0) rotate(0deg);   opacity: 0; }
+    }
+    .fx-lavakill {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .fx-lavakill .burst {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 60%; height: 60%;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle, #fff7ed 0%, #fed7aa 22%, #fb923c 50%, #ea580c 75%, transparent 100%);
+      animation: fx-lavakill-burst var(--fx-lavakill-dur) ease-out forwards;
+    }
+    .fx-lavakill .text {
+      position: absolute;
+      top: 50%; left: 50%;
+      font-weight: 900;
+      font-size: clamp(10px, 1.7vw, 15px);
+      color: #fff7ed;
+      letter-spacing: 0.18em;
+      text-shadow: 0 0 8px #ea580c, 0 0 14px #f97316, 0 1px 2px rgba(0, 0, 0, 0.85);
+      animation: fx-lavakill-text var(--fx-lavakill-dur) ease-out forwards;
+    }
+
+    /* FX: SIZZLE — a rock dropping into lava. Pale steam puff rising up
+       with an orange-edged "sssssss!" label, instead of the explosive
+       boom flash. Used by resolveRockArrival when env === 'lava'. */
+    @keyframes fx-sizzle-puff {
+      0%   { transform: translate(-50%, -40%) scale(0.4); opacity: 0;   }
+      30%  { transform: translate(-50%, -55%) scale(1.1); opacity: 0.85;}
+      100% { transform: translate(-50%, -90%) scale(1.6); opacity: 0;   }
+    }
+    @keyframes fx-sizzle-text {
+      0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+      25%  { transform: translate(-50%, -55%) scale(1.15); opacity: 1; }
+      75%  { transform: translate(-50%, -65%) scale(1.05); opacity: 1; }
+      100% { transform: translate(-50%, -80%) scale(1.0);  opacity: 0; }
+    }
+    .fx-sizzle {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .fx-sizzle .puff {
+      position: absolute;
+      top: 60%; left: 50%;
+      width: 70%; height: 70%;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle, rgba(255, 255, 255, 0.85) 0%,
+                                rgba(254, 240, 138, 0.55) 35%,
+                                rgba(249, 115, 22, 0.35) 65%,
+                                transparent 100%);
+      filter: blur(2px);
+      animation: fx-sizzle-puff 1100ms ease-out forwards;
+    }
+    .fx-sizzle .text {
+      position: absolute;
+      top: 50%; left: 50%;
+      font-weight: 900;
+      font-size: clamp(10px, 1.6vw, 14px);
+      color: #fff7ed;
+      letter-spacing: 0.18em;
+      text-shadow: 0 0 6px #f97316, 0 0 10px rgba(239, 68, 68, 0.7), 0 1px 2px rgba(0, 0, 0, 0.85);
+      animation: fx-sizzle-text 1100ms ease-out forwards;
+    }
+    .env-glyph {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-size: clamp(16px, 3vw, 28px);
+      font-weight: 700;
+      pointer-events: none;
+      user-select: none;
+      opacity: 0.95;
+    }
+
+    /* Edit mode */
+    body.edit-mode .cell { cursor: cell; }
+    body.edit-mode .cell:hover { background: var(--cell-hover); }
+    body.edit-mode .cell.legal::after { display: none; }
+    /* Edit-mode highlight: outline the source cell while a Move pickup
+       or Copy clipboard is active, so the user can see what's queued. */
+    body.edit-mode .cell.edit-source {
+      box-shadow: inset 0 0 0 2px #fde047,
+                  0 0 8px rgba(253, 224, 71, 0.5);
+    }
+    .edit-banner {
+      display: none;
+      padding: 8px 10px 10px;
+      border-radius: 8px;
+      background: rgba(245, 158, 11, 0.10);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: #fcd34d;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+    body.edit-mode .edit-banner { display: block; }
+    .edit-banner-title {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #fcd34d;
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+    .edit-tools {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      align-items: stretch;
+    }
+    .edit-tool-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 2px;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.18);
+    }
+    .edit-tool-group + .edit-tool-group { margin-left: 4px; }
+    .edit-tool {
+      min-width: 34px;
+      height: 34px;
+      padding: 0 6px;
+      border-radius: 5px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(15, 18, 24, 0.7);
+      color: #e2e8f0;
+      font-size: 14px;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-grid;
+      place-items: center;
+      gap: 1px;
+      transition: background 80ms ease, border-color 80ms ease, transform 60ms ease;
+      user-select: none;
+    }
+    .edit-tool:hover { background: rgba(31, 41, 55, 0.95); border-color: rgba(253, 224, 71, 0.45); }
+    .edit-tool:active { transform: translateY(1px); }
+    .edit-tool .tool-glyph { font-size: 16px; line-height: 1; }
+    .edit-tool .tool-label {
+      font-size: 9px;
+      letter-spacing: 0.04em;
+      color: #94a3b8;
+      text-transform: uppercase;
+      max-width: 64px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .edit-tool.active {
+      background: rgba(253, 224, 71, 0.18);
+      border-color: #fde047;
+      color: #fde047;
+      box-shadow: 0 0 0 1px rgba(253, 224, 71, 0.35);
+    }
+    .edit-tool.active .tool-label { color: #fde047; }
+    .edit-tool.danger { color: #fca5a5; }
+    .edit-tool.danger.active { background: rgba(239, 68, 68, 0.2); border-color: #ef4444; color: #fecaca; box-shadow: 0 0 0 1px rgba(239,68,68,0.4); }
+    .edit-hint {
+      margin-top: 6px;
+      font-size: 11px;
+      color: #fde68a;
+      min-height: 14px;
+    }
+
+    /* Button wiring info panel. Sits under the edit-hint and pops up
+       whenever the user is actively wiring a button (either by placing
+       a new one — which auto-opens the panel — or by selecting the
+       wire-button tool). Lists each target cell with the effect this
+       button will have on it based on the target's current contents.
+       Re-rendered every render() pass so the effect description stays
+       in sync as the user paints TnT / Lock / Red Portal onto the
+       targeted cells. .hidden suppresses the panel when not wiring. */
+    .button-wire-info {
+      margin-top: 6px;
+      padding: 8px 10px;
+      font-size: 11px;
+      line-height: 1.4;
+      color: #fef3c7;
+      background: rgba(15, 18, 24, 0.85);
+      border: 1px solid rgba(251, 191, 36, 0.55);
+      border-radius: 6px;
+      box-shadow:
+        0 0 0 1px rgba(251, 191, 36, 0.15),
+        0 4px 10px rgba(0, 0, 0, 0.4);
+    }
+    .button-wire-info.hidden { display: none; }
+    .button-wire-info .bwi-title {
+      font-weight: 700;
+      color: #fde047;
+      margin-bottom: 4px;
+    }
+    .button-wire-info .bwi-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .button-wire-info .bwi-list li {
+      padding: 2px 0;
+      color: #f5f5f4;
+    }
+    .button-wire-info .bwi-list li .bwi-coord {
+      color: #38bdf8;
+      font-weight: 700;
+    }
+    .button-wire-info .bwi-list li .bwi-effect-tnt    { color: #fb923c; }
+    .button-wire-info .bwi-list li .bwi-effect-lock   { color: #facc15; }
+    .button-wire-info .bwi-list li .bwi-effect-portal { color: #fcd34d; }
+    .button-wire-info .bwi-list li .bwi-effect-none   { color: #94a3b8; font-style: italic; }
+    .button-wire-info .bwi-empty {
+      color: #94a3b8;
+      font-style: italic;
+    }
+    .button-wire-info .bwi-finish {
+      margin-top: 6px;
+      color: #fde68a;
+      font-style: italic;
+    }
+
+    /* Direction picker popover. Floats above the board when the user
+       paints a wall or portal cell; lets the user toggle which sides
+       have bars. Walls allow multi-select; portals are exclusive. */
+    .dir-picker {
+      position: fixed;
+      z-index: 50;
+      background: rgba(15, 18, 24, 0.96);
+      border: 1px solid rgba(253, 224, 71, 0.5);
+      border-radius: 8px;
+      padding: 8px;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.5);
+      display: grid;
+      grid-template-columns: 32px 32px 32px;
+      grid-template-rows: 32px 32px 32px auto;
+      gap: 4px;
+      align-items: center;
+      justify-items: center;
+    }
+    .dir-picker.hidden { display: none; }
+    .dir-picker .dir-title {
+      grid-column: 1 / span 3;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #fde047;
+      text-align: center;
+      margin-bottom: 2px;
+    }
+    /* .dir-picker .dir-spacer is intentionally style-less — it just
+       occupies a grid track to position neighboring .dir-btn slots. */
+    .dir-picker .dir-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 5px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(31, 41, 55, 0.85);
+      color: #e2e8f0;
+      font-size: 16px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: background 80ms ease, border-color 80ms ease;
+    }
+    .dir-picker .dir-btn:hover { background: rgba(55, 65, 81, 0.95); border-color: rgba(253, 224, 71, 0.55); }
+    .dir-picker .dir-btn.active {
+      background: rgba(253, 224, 71, 0.25);
+      border-color: #fde047;
+      color: #fef3c7;
+      box-shadow: 0 0 0 1px rgba(253, 224, 71, 0.5);
+    }
+    .dir-picker .dir-actions {
+      grid-column: 1 / span 3;
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .dir-picker .dir-actions button {
+      flex: 1;
+      padding: 4px 6px;
+      font-size: 10px;
+      border-radius: 4px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      background: rgba(31, 41, 55, 0.85);
+      color: #e2e8f0;
+      cursor: pointer;
+    }
+    .dir-picker .dir-actions button.primary {
+      background: rgba(253, 224, 71, 0.18);
+      border-color: #fde047;
+      color: #fef3c7;
+    }
+
+    /* Save-layout modal. Opened from the edit-mode "Save layout…" button.
+       The mini-grid renders a 220px sample of the target level's current
+       contents so the user can see what they're about to overwrite. */
+    .save-layout-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: grid;
+      place-items: center;
+      z-index: 100;
+    }
+    .save-layout-overlay.hidden { display: none; }
+    .save-layout-dialog {
+      background: rgba(15, 18, 24, 0.98);
+      border: 1px solid rgba(253, 224, 71, 0.45);
+      border-radius: 10px;
+      padding: 18px 20px;
+      max-width: 320px;
+      width: 92vw;
+      color: #e2e8f0;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+      position: relative;
+    }
+    /* Top-right X close button. Replaces a bottom "Cancel" so the
+       dismiss affordance lives where users instinctively look on a
+       modal dialog. Same behavior as the old Cancel: closes the
+       overlay without saving or deleting anything. */
+    #save-layout-close {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      background: transparent;
+      color: #94a3b8;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+      padding: 0;
+    }
+    #save-layout-close:hover {
+      background: rgba(239, 68, 68, 0.18);
+      color: #fda4af;
+      border-color: rgba(239, 68, 68, 0.45);
+    }
+    #save-layout-close:focus-visible {
+      outline: 2px solid #fde047;
+      outline-offset: 1px;
+    }
+    .save-layout-dialog h3 {
+      margin: 0 0 12px;
+      color: #fde047;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .save-layout-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+    .save-layout-row label { font-size: 12px; color: #94a3b8; }
+    .save-layout-row input[type="number"] {
+      background: rgba(31, 41, 55, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      color: #e2e8f0;
+      border-radius: 5px;
+      padding: 6px 8px;
+      width: 70px;
+      font-size: 13px;
+    }
+    .save-layout-row input[type="text"] {
+      background: rgba(31, 41, 55, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      color: #e2e8f0;
+      border-radius: 5px;
+      padding: 6px 8px;
+      font-size: 13px;
+    }
+    .save-layout-row #save-layout-new-slot {
+      padding: 5px 10px;
+      font-size: 11px;
+      border-radius: 5px;
+      border: 1px solid rgba(134, 239, 172, 0.45);
+      background: rgba(34, 197, 94, 0.15);
+      color: #86efac;
+      cursor: pointer;
+    }
+    .save-layout-row #save-layout-new-slot:hover {
+      background: rgba(34, 197, 94, 0.28);
+    }
+    .save-layout-status {
+      font-size: 12px;
+      margin-bottom: 6px;
+      min-height: 14px;
+      color: #94a3b8;
+    }
+    .save-layout-status.ok { color: #86efac; }
+    .save-layout-status.warn { color: #fda4af; }
+    .save-layout-mini-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      grid-template-rows: repeat(10, 1fr);
+      width: 220px;
+      height: 220px;
+      gap: 1px;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+    .save-layout-mini-grid .mc.env-green-knight { background: rgba(34, 197, 94, 0.45); }
+      margin: 4px auto 6px;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .save-layout-mini-grid .mc {
+      background: rgba(15, 18, 24, 0.9);
+      position: relative;
+      font-size: 11px;
+      display: grid;
+      place-items: center;
+      color: rgba(226, 232, 240, 0.8);
+      line-height: 1;
+    }
+    .save-layout-mini-grid .mc.in       { background: rgba(34, 197, 94, 0.45); color: #052e16; font-weight: 700; }
+    .save-layout-mini-grid .mc.out      { background: rgba(239, 68, 68, 0.45); color: #450a0a; font-weight: 700; }
+    .save-layout-mini-grid .mc.env-lava { background: rgba(239, 68, 68, 0.55); }
+    .save-layout-mini-grid .mc.env-tnt  { background: rgba(245, 158, 11, 0.5); }
+    .save-layout-mini-grid .mc.env-slide     { background: rgba(56, 189, 248, 0.45); }
+    .save-layout-mini-grid .mc.env-river     { background: rgba(34, 211, 238, 0.55); }
+    .save-layout-mini-grid .mc.env-knight    { background: rgba(168, 85, 247, 0.4); }
+    .save-layout-mini-grid .mc.env-wall      { background: rgba(100, 116, 139, 0.7); }
+    .save-layout-mini-grid .mc.env-portal    { background: rgba(168, 85, 247, 0.6); }
+    .save-layout-mini-grid .mc.env-portal-y  { background: rgba(245, 158, 11, 0.55); }
+    .save-layout-mini-grid .mc.env-portal-b  { background: rgba(59, 130, 246, 0.55); }
+    .save-layout-mini-grid .mc.env-portal-r  { background: rgba(244, 63, 94, 0.55); }
+    .save-layout-mini-grid .mc.env-portal-g  { background: rgba(34, 197, 94, 0.55); }
+    .save-layout-mini-grid .mc.env-boulder   { background: rgba(71, 85, 105, 0.75); }
+    .save-layout-mini-grid .mc.env-tree      { background: rgba(34, 197, 94, 0.65); }
+    .save-layout-meta { font-size: 10px; color: #64748b; margin: 0 0 10px; text-align: center; }
+    .save-layout-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .save-layout-buttons button {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 5px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      background: rgba(31, 41, 55, 0.85);
+      color: #e2e8f0;
+      cursor: pointer;
+    }
+    .save-layout-buttons button:hover { background: rgba(55, 65, 81, 0.95); }
+    .save-layout-buttons button.primary {
+      background: rgba(253, 224, 71, 0.22);
+      border-color: #fde047;
+      color: #fef3c7;
+      font-weight: 700;
+    }
+    .save-layout-buttons button.danger {
+      border-color: rgba(239, 68, 68, 0.55);
+      color: #fca5a5;
+    }
+    .save-layout-buttons button.danger:hover {
+      background: rgba(239, 68, 68, 0.18);
+    }
+
+    .token {
+      width: 60%;
+      height: 60%;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+      z-index: 2;
+      position: relative;
+    }
+    /* When 2+ players share a cell, render them positioned around the cell
+       (size + position keyed off the group size + this token's index in the group). */
+    .token.stacked {
+      position: absolute;
+      width: 42%;
+      height: 42%;
+    }
+    .token.stacked.stacked-of-2.stacked-pos-0 { left: 8%;  top: 50%; transform: translateY(-50%); }
+    .token.stacked.stacked-of-2.stacked-pos-1 { right: 8%; top: 50%; transform: translateY(-50%); }
+    .token.stacked.stacked-of-3 { width: 38%; height: 38%; }
+    .token.stacked.stacked-of-3.stacked-pos-0 { top: 6%;    left: 50%; transform: translateX(-50%); }
+    .token.stacked.stacked-of-3.stacked-pos-1 { bottom: 6%; left: 6%; }
+    .token.stacked.stacked-of-3.stacked-pos-2 { bottom: 6%; right: 6%; }
+    .token.p1 { background: radial-gradient(circle at 30% 30%, #c4b5fd, #6d28d9); color: #fff; }
+    .token.p2 { background: radial-gradient(circle at 30% 30%, #fde68a, #b45309); color: #1f2937; }
+    .token.p3 { background: radial-gradient(circle at 30% 30%, #99f6e4, #0f766e); color: #fff; }
+    .token .dir-arrow {
+      position: absolute;
+      width: 0; height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-bottom: 7px solid #fff;
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,0.6));
+    }
+    .token.p2 .dir-arrow { border-bottom-color: #1f2937; }
+
+    /* Armed player: a pulsing yellow halo + small sword badge in the corner. */
+    .token.armed {
+      box-shadow:
+        0 0 0 2px #fde047,
+        0 0 12px rgba(250, 204, 21, 0.85),
+        0 2px 6px rgba(0, 0, 0, 0.5);
+    }
+    .token.armed::after {
+      content: '🗡';
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      font-size: 14px;
+      color: #fde047;
+      text-shadow: 0 0 4px rgba(0, 0, 0, 0.85);
+      pointer-events: none;
+      z-index: 4;
+    }
+    /* When armed, the token shows a knife glyph inside the circle in place of the
+       player initials. */
+    .token .knife-icon {
+      font-size: 1.5em;
+      line-height: 1;
+      filter: drop-shadow(0 0 4px rgba(250, 204, 21, 0.95));
+    }
+    /* Invisible player: ghosted look + cyan glow. */
+    .token.invisible {
+      opacity: 0.55;
+      box-shadow:
+        0 0 0 2px var(--accent-cyan),
+        0 0 14px rgba(103, 232, 249, 0.7),
+        0 2px 6px rgba(0, 0, 0, 0.5);
+    }
+    .token.invisible::before {
+      content: '👻';
+      position: absolute;
+      top: -10px;
+      left: -8px;
+      font-size: 13px;
+      filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.85));
+      pointer-events: none;
+      z-index: 4;
+    }
+
+    /* Weapon pickup on the board (treasure chest containing a Spider Knife). */
+    .weapon {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+      user-select: none;
+      z-index: 1;
+      animation: weapon-pulse 1.6s ease-in-out infinite;
+    }
+    .weapon svg {
+      width: 62%;
+      height: auto;
+      filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.7));
+    }
+    @keyframes weapon-pulse {
+      0%, 100% { transform: scale(1);    opacity: 0.95; }
+      50%      { transform: scale(1.14); opacity: 1; }
+    }
+
+    /* Cake pickup: a sweet snack worth +100 points. Rendered as an emoji
+       in its own DOM child so it can co-exist with other cell layers. */
+    .cake {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+      user-select: none;
+      z-index: 1;
+      font-size: clamp(16px, 2.6vw, 26px);
+      filter: drop-shadow(0 0 6px rgba(244, 114, 182, 0.65));
+      animation: weapon-pulse 1.8s ease-in-out infinite;
+    }
+
+    /* Spider NPC */
+    .spider {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-size: clamp(15px, 2.6vw, 24px);
+      pointer-events: none;
+      user-select: none;
+      z-index: 3;
+      filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.55));
+      animation: spider-skitter 1.6s ease-in-out infinite;
+    }
+    @keyframes spider-skitter {
+      0%, 100% { transform: translate(0, 0)    rotate(-4deg); }
+      50%      { transform: translate(0, -2px) rotate(4deg);  }
+    }
+    /* If multiple spiders share a cell, fan them out a bit. */
+    .spider.s2 { transform: translate(6px, 4px)  scale(0.85); }
+    .spider.s3 { transform: translate(-6px, 4px) scale(0.85); }
+    .spider.s4 { transform: translate(0, -6px)   scale(0.85); }
+    /* Baby spider: about half the size of an adult, with a pinker glow.
+       The smaller font-size carries through to the worm emoji used in
+       spider-free mode so baby worms are clearly distinguishable from
+       adult worms. */
+    .spider.baby {
+      font-size: clamp(8px, 1.3vw, 12px);
+      filter: drop-shadow(0 0 5px rgba(244, 114, 182, 0.85));
+    }
+    /* Petting-zoo bonus level: spiders are friendly, so re-tint them
+       pink (matching the heart / baby-spider palette) instead of the
+       hostile red. Layout-scoped via the body class set by the
+       renderer when state.level === PETTING_ZOO_LEVEL_INDEX. */
+    body.layout-you-may-now-pet-the-spiders .spider {
+      color: #f9a8d4;
+      filter: drop-shadow(0 0 6px rgba(244, 114, 182, 0.7));
+    }
+    body.layout-you-may-now-pet-the-spiders .spider.baby {
+      filter: drop-shadow(0 0 5px rgba(244, 114, 182, 0.85));
+    }
+    /* FX: love mode heart that pops up when adult spiders stack. */
+    @keyframes fx-love-pop {
+      0%   { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
+      25%  { transform: translate(-50%, -90%) scale(1.4); opacity: 1; }
+      80%  { transform: translate(-50%, -120%) scale(1.0); opacity: 1; }
+      100% { transform: translate(-50%, -160%) scale(0.9); opacity: 0; }
+    }
+    .fx-love {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      font-size: clamp(14px, 2.2vw, 22px);
+      pointer-events: none;
+      z-index: 5;
+      filter: drop-shadow(0 0 6px rgba(244, 114, 182, 0.9));
+      animation: fx-love-pop 1500ms ease-out forwards;
+    }
+    /* FX: baby spider graduates into an adult. */
+    .fx-grow {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      font-weight: 800;
+      font-size: clamp(10px, 1.5vw, 13px);
+      color: #fbcfe8;
+      background: rgba(15, 23, 42, 0.85);
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(244, 114, 182, 0.6);
+      pointer-events: none;
+      z-index: 5;
+      white-space: nowrap;
+      animation: fx-pickup 1400ms ease-out forwards;
+    }
+
+    /* FX: spider killed (ZAP!) */
+    @keyframes fx-zap-text {
+      0%   { transform: translate(-50%, -50%) scale(0.4) rotate(-8deg); opacity: 0; }
+      18%  { transform: translate(-50%, -50%) scale(1.5) rotate(2deg);  opacity: 1; }
+      70%  { transform: translate(-50%, -50%) scale(1.0) rotate(0deg);  opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1.0) rotate(0deg);  opacity: 0; }
+    }
+    .fx-zap {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      font-weight: 900;
+      font-size: clamp(9px, 1.5vw, 13px);
+      color: #fde047;
+      letter-spacing: 0.14em;
+      text-shadow: 0 0 8px rgba(250, 204, 21, 0.95), 0 1px 2px rgba(0, 0, 0, 0.7);
+      pointer-events: none;
+      z-index: 5;
+      white-space: nowrap;
+      animation: fx-zap-text 1100ms ease-out forwards;
+    }
+
+    /* FX: player killed (EATEN!) */
+    @keyframes fx-eaten-text {
+      0%   { transform: translate(-50%, -50%) scale(0.5) rotate(-6deg); opacity: 0; }
+      20%  { transform: translate(-50%, -50%) scale(1.4) rotate(3deg);  opacity: 1; }
+      75%  { transform: translate(-50%, -50%) scale(1.0) rotate(0deg);  opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1.0) rotate(0deg);  opacity: 0; }
+    }
+    .fx-eaten {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      font-weight: 900;
+      font-size: clamp(10px, 1.6vw, 14px);
+      color: #fecaca;
+      letter-spacing: 0.14em;
+      text-shadow: 0 0 10px rgba(239, 68, 68, 0.95), 0 1px 2px rgba(0, 0, 0, 0.85);
+      pointer-events: none;
+      z-index: 5;
+      white-space: nowrap;
+      animation: fx-eaten-text var(--fx-eaten-dur) ease-out forwards;
+    }
+
+    /* FX: weapon pickup */
+    @keyframes fx-pickup {
+      0%   { transform: translate(-50%, 0)    scale(1);   opacity: 0; }
+      18%  { transform: translate(-50%, -10%) scale(1.2); opacity: 1; }
+      100% { transform: translate(-50%, -90%) scale(0.9); opacity: 0; }
+    }
+    .fx-pickup {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      font-weight: 800;
+      font-size: clamp(11px, 1.6vw, 14px);
+      color: var(--weapon);
+      background: rgba(15, 23, 42, 0.85);
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(250, 204, 21, 0.6);
+      text-shadow: 0 0 8px rgba(250, 204, 21, 0.9);
+      pointer-events: none;
+      z-index: 5;
+      white-space: nowrap;
+      animation: fx-pickup 1400ms ease-out forwards;
+    }
+    /* Variant tint for the invisibility-potion pickup. */
+    .fx-pickup.potion {
+      color: var(--accent-cyan);
+      border-color: rgba(103, 232, 249, 0.65);
+      text-shadow: 0 0 8px rgba(103, 232, 249, 0.95);
+    }
+    /* Variant tint for the cake pickup. Cake gets a 1.5x longer dwell
+       (overriding the 1400ms fx-pickup base) so the "Cake!" reward toast
+       lingers long enough to be celebrated. */
+    .fx-pickup.cake {
+      color: #f9a8d4;
+      border-color: rgba(244, 114, 182, 0.65);
+      text-shadow: 0 0 8px rgba(244, 114, 182, 0.95);
+      animation-duration: var(--fx-cake-dur);
+    }
+    /* Variant tint for the key pickup. */
+    .fx-pickup.key {
+      color: var(--key);
+      border-color: rgba(251, 191, 36, 0.7);
+      text-shadow: 0 0 8px rgba(251, 191, 36, 0.95);
+    }
+    /* Variant tint for the "Baby Spider!" birth toast (fires alongside
+       the love-heart on the breeding cell). Pink-on-charcoal to match
+       the heart and the existing .fx-grow graduation toast family. */
+    .fx-pickup.baby {
+      color: #f9a8d4;
+      border-color: rgba(244, 114, 182, 0.65);
+      text-shadow: 0 0 8px rgba(244, 114, 182, 0.95);
+    }
+    /* Petting-zoo: red toast when the player accidentally hurts a
+       spider while holding a knife. Sits on top of the spider's last
+       cell; companion to the addScore(−100, 'OW! You hurt me!') event. */
+    .fx-pickup.ouch {
+      color: #fca5a5;
+      border-color: rgba(248, 113, 113, 0.7);
+      text-shadow: 0 0 8px rgba(248, 113, 113, 0.95);
+    }
+    /* Petting-zoo: green heart pop — mirrors the love-heart shape but
+       in friendly green. Stacks on top of the spider's cell so the
+       player sees the heart even while a label toast is animating. */
+    .fx-heart-green {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      font-size: clamp(14px, 2.2vw, 22px);
+      pointer-events: none;
+      z-index: 5;
+      filter: drop-shadow(0 0 6px rgba(74, 222, 128, 0.9));
+      animation: fx-love-pop 1500ms ease-out forwards;
+    }
+    /* Petting-zoo: friendly label toast ("Awww!", "You pet the spider!",
+       etc.). Pill-shape mirrors .fx-pickup, but uses a green palette
+       and a longer 2000ms dwell so multi-spider runs are readable. The
+       data-slot attribute (set by the FX dispatcher 0..5) drives a
+       small fan-out via @keyframes fx-pet so adjacent labels don't
+       fully overlap. */
+    @keyframes fx-pet {
+      0%   { transform: translate(var(--fx-pet-dx, -50%), 0)    scale(1);   opacity: 0; }
+      15%  { transform: translate(var(--fx-pet-dx, -50%), -10%) scale(1.2); opacity: 1; }
+      75%  { transform: translate(var(--fx-pet-dx, -50%), -80%) scale(1.0); opacity: 1; }
+      100% { transform: translate(var(--fx-pet-dx, -50%), -110%) scale(0.9); opacity: 0; }
+    }
+    .fx-pet {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      font-weight: 800;
+      font-size: clamp(11px, 1.6vw, 14px);
+      color: #bbf7d0;
+      background: rgba(15, 23, 42, 0.85);
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(74, 222, 128, 0.65);
+      text-shadow: 0 0 8px rgba(74, 222, 128, 0.95);
+      pointer-events: none;
+      z-index: 6;
+      white-space: nowrap;
+      animation: fx-pet 2000ms ease-out forwards;
+    }
+    /* Fan-out variants: shift the label horizontally by slot so
+       back-to-back pets on the same cell read distinctly. */
+    .fx-pet[data-slot="0"] { --fx-pet-dx: -50%; }
+    .fx-pet[data-slot="1"] { --fx-pet-dx: -85%; }
+    .fx-pet[data-slot="2"] { --fx-pet-dx: -15%; }
+    .fx-pet[data-slot="3"] { --fx-pet-dx: -110%; }
+    .fx-pet[data-slot="4"] { --fx-pet-dx:  10%; }
+    .fx-pet[data-slot="5"] { --fx-pet-dx: -50%; }
+    /* Petting-zoo: spider exits through the IN cell. Glyph is anchored
+       at IN (renderer pushes fx with c=IN.c, r=IN.r) and slides up-and-
+       left toward the off-grid "world" while fading. The 700ms duration
+       finishes well within a single spider phase. */
+    @keyframes fx-spider-exit {
+      0%   { transform: translate(-50%, -50%) scale(1);    opacity: 0.95; }
+      30%  { transform: translate(-90%, -90%) scale(0.95); opacity: 0.95; }
+      100% { transform: translate(-220%, -220%) scale(0.35); opacity: 0; }
+    }
+    .fx-spider-exit {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      font-size: clamp(14px, 2.2vw, 22px);
+      color: #f9a8d4;
+      filter: drop-shadow(0 0 6px rgba(244, 114, 182, 0.85));
+      pointer-events: none;
+      z-index: 6;
+      animation: fx-spider-exit 700ms ease-in forwards;
+    }
+    /* Generic info toast (e.g. "<name> is now visible"). */
+    .fx-info {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      font-weight: 700;
+      font-size: clamp(10px, 1.5vw, 13px);
+      color: var(--muted);
+      background: rgba(15, 23, 42, 0.85);
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #2d3748;
+      pointer-events: none;
+      z-index: 5;
+      white-space: nowrap;
+      animation: fx-pickup 1400ms ease-out forwards;
+    }
+
+    /* Side panel */
+    #side {
+      display: grid;
+      gap: 12px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--grid-line);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .card h2 {
+      margin: 0 0 8px 0;
+      font-family: 'Cabin Sketch', 'Bangers', cursive;
+      font-size: 18px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #d4a373;
+      font-weight: 700;
+      text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+    }
+    /* Setup card title: same playful display font as the main h1 so the
+       game name stands out wherever it appears. Animated wobble +
+       gentle scale pulse + glow shift make the splash feel alive. */
+    #setup-card h2 {
+      font-family: 'Bangers', 'Cabin Sketch', cursive;
+      font-size: 92px;
+      line-height: 0.95;
+      letter-spacing: 0.06em;
+      text-transform: none;
+      color: #f5e9d3;
+      text-align: center;
+      margin: 0 0 8px;
+      transform-origin: 50% 80%;
+      animation: setup-title-wobble 2.6s ease-in-out infinite;
+      text-shadow:
+        0 1px 0 #2c1f15,
+        0 2px 0 #1a120b,
+        0 4px 0 #0c0805,
+        0 6px 14px rgba(0, 0, 0, 0.85),
+        0 0 24px rgba(255, 138, 61, 0.35);
+    }
+    @keyframes setup-title-wobble {
+      0%   { transform: rotate(-2.5deg) scale(1);    filter: hue-rotate(0deg); }
+      25%  { transform: rotate( 2.5deg) scale(1.04); filter: hue-rotate(8deg); }
+      50%  { transform: rotate(-1.5deg) scale(1);    filter: hue-rotate(-6deg); }
+      75%  { transform: rotate( 1.5deg) scale(1.04); filter: hue-rotate(4deg); }
+      100% { transform: rotate(-2.5deg) scale(1);    filter: hue-rotate(0deg); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #setup-card h2 { animation: none; transform: none; }
+    }
+    .turn-indicator {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+    }
+    /* Header row that pairs the card's H2 with the running turn counter.
+       The counter sits at the right edge in muted text, with the live
+       numbers in foreground bold. */
+    .turn-header {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin: 0 0 8px 0;
+    }
+    .turn-header h2 {
+      margin: 0;
+    }
+    #turn-counter {
+      margin-left: auto;
+      font-family: var(--font-base, inherit);
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    #turn-counter #turn-counter-num,
+    #turn-counter #min-turns {
+      color: var(--fg);
+      font-weight: 800;
+    }
+    #turn-counter .turn-counter-min {
+      opacity: 0.65;
+    }
+    .swatch {
+      width: 14px; height: 14px; border-radius: 50%;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.06);
+    }
+    .swatch.p1 { background: var(--p1); }
+    .swatch.p2 { background: var(--p2); }
+    .swatch.p3 { background: var(--p3); }
+    .status-line { color: var(--muted); font-size: 12px; margin-top: 6px; }
+    .player-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 4px 0; font-size: 13px;
+    }
+    .player-row + .player-row { border-top: 1px solid #1a2030; padding-top: 8px; margin-top: 4px; }
+    .badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: #1a2030;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .badge.active { background: var(--p1); color: #fff; }
+    .badge.active.p2 { background: var(--p2); color: #1f2937; }
+    .badge.active.p3 { background: var(--p3); color: #fff; }
+    .badge.exited { background: #064e3b; color: #6ee7b7; }
+    button {
+      background: #1f2937;
+      color: var(--fg);
+      border: 1px solid #2d3748;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    button:hover { background: #2a3140; }
+    /* Compact pill buttons for jumping between levels. */
+    .level-btn {
+      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      min-width: 28px;
+      border-radius: 6px;
+      background: #1f2937;
+      color: var(--fg);
+      border: 1px solid #2d3748;
+      cursor: pointer;
+    }
+    .level-btn:hover { background: #2a3140; }
+    .level-btn.active {
+      background: var(--out);
+      color: #fff;
+      border-color: var(--out);
+    }
+    /* Custom-layout marker on the level-jump pad: a small amber dot in
+       the top-right corner of any slot whose layout is being loaded
+       from the user's localStorage save instead of the built-in
+       LEVEL_ORDER entry. Helps you spot when a stale save is shadowing
+       a built-in layout (which is what made Level 12's button wiring
+       look broken even after the source was fixed). The dot uses
+       position:relative on the button so it can ride along with the
+       button's own border-radius without leaking outside it. */
+    .level-btn { position: relative; }
+    .level-btn.custom::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #fbbf24;
+      box-shadow: 0 0 0 1px #1f2937, 0 0 4px rgba(251, 191, 36, 0.7);
+      pointer-events: none;
+    }
+    /* Edit Mode launcher: themed two-line button so it sells the
+       "design your own level" call-to-action instead of looking like
+       just another sidebar control. Uses the game's title font for the
+       headline and the sketchy body font for the subtitle. */
+    #edit-launch-card.hidden { display: none; }
+    #edit-btn.edit-mode-btn {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 10px 14px;
+      background: linear-gradient(180deg, rgba(168, 85, 247, 0.22), rgba(168, 85, 247, 0.08));
+      border: 2px dashed rgba(192, 132, 252, 0.7);
+      border-radius: 10px;
+      color: #f5e9d3;
+      cursor: pointer;
+      transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+      box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.15), 0 4px 14px rgba(168, 85, 247, 0.18);
+    }
+    #edit-btn.edit-mode-btn:hover {
+      background: linear-gradient(180deg, rgba(168, 85, 247, 0.32), rgba(168, 85, 247, 0.14));
+      box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.35), 0 6px 20px rgba(168, 85, 247, 0.32);
+      transform: translateY(-1px);
+    }
+    #edit-btn.edit-mode-btn:active { transform: translateY(0); }
+    #edit-btn.edit-mode-btn .edit-mode-btn-title {
+      font-family: 'Bangers', 'Cabin Sketch', cursive;
+      font-size: 22px;
+      letter-spacing: 0.12em;
+      color: #f5e9d3;
+      text-shadow: 0 0 8px rgba(192, 132, 252, 0.55), 0 1px 0 #1a120b;
+      line-height: 1.05;
+    }
+    #edit-btn.edit-mode-btn .edit-mode-btn-sub {
+      font-family: 'Cabin Sketch', cursive;
+      font-style: italic;
+      font-size: 12px;
+      color: #d8b4fe;
+      letter-spacing: 0.02em;
+    }
+    /* Active / "Done editing" state: switch to a warm amber palette so
+       it reads as "you're in edit mode, click to leave". */
+    body.edit-mode #edit-btn.edit-mode-btn {
+      background: linear-gradient(180deg, rgba(245, 158, 11, 0.28), rgba(245, 158, 11, 0.10));
+      border-color: rgba(252, 211, 77, 0.85);
+      box-shadow: 0 0 0 1px rgba(252, 211, 77, 0.35), 0 4px 14px rgba(245, 158, 11, 0.28);
+    }
+    body.edit-mode #edit-btn.edit-mode-btn .edit-mode-btn-title {
+      text-shadow: 0 0 8px rgba(252, 211, 77, 0.65), 0 1px 0 #1a120b;
+    }
+    body.edit-mode #edit-btn.edit-mode-btn .edit-mode-btn-sub {
+      color: #fde68a;
+    }
+
+    /* Compact tinted action buttons (Undo, Reset Level, Drink Potion)
+       all share this flat-tinted look. Each color variant below picks
+       its own tint so the buttons read as a family while staying easy
+       to tell apart at a glance. */
+    .control-actions {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .big-action-btn,
+    .drink-potion-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background 120ms ease, border-color 120ms ease, opacity 120ms ease;
+    }
+    .control-actions .big-action-btn {
+      flex: 1 1 0;
+      min-width: 110px;
+    }
+    .big-action-btn-icon {
+      font-size: 14px;
+      line-height: 1;
+    }
+    .big-action-btn:disabled,
+    .big-action-btn[disabled] {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    /* Undo + Reset Level — warm orange tint. Same family so the player
+       reads them as the two "I'm stuck" recovery buttons. */
+    .big-action-btn.undo-btn,
+    .big-action-btn.reset-level-btn {
+      background: rgba(251, 146, 60, 0.32);
+      border-color: rgba(254, 215, 170, 0.95);
+      color: #fff7ed;
+    }
+    .big-action-btn.undo-btn:hover:not(:disabled),
+    .big-action-btn.reset-level-btn:hover:not(:disabled) {
+      background: rgba(251, 146, 60, 0.55);
+      border-color: rgba(254, 235, 200, 1);
+    }
+    /* Slight extra glow when an undo snapshot is armed (canUndo() === true,
+       set by updateUndoButton in game.js). */
+    .big-action-btn.undo-btn.undo-armed {
+      border-color: rgba(254, 240, 138, 1);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.45);
+    }
+
+    /* Drink Potion — brighter sky-blue tint when actionable. The button
+       is fully hidden (display:none) when the active player has no potion
+       in their inventory, and re-appears as soon as one is picked up. */
+    .drink-potion-btn.hidden { display: none; }
+    .drink-potion-btn {
+      background: rgba(56, 189, 248, 0.10);
+      border-color: rgba(56, 189, 248, 0.45);
+      color: #7dd3fc;
+    }
+    .drink-potion-btn:not(.hidden) {
+      background: rgba(56, 189, 248, 0.42);
+      border-color: rgba(186, 230, 253, 1);
+      color: #f0f9ff;
+    }
+    .drink-potion-btn:not(.hidden):hover {
+      background: rgba(56, 189, 248, 0.65);
+      border-color: rgba(224, 242, 254, 1);
+    }
+
+    .banner {
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: #6ee7b7;
+      font-size: 13px;
+    }
+    .rules { font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .rules strong { color: var(--fg); }
+
+    /* Collapsible Rules card. The h2 lives inside a button so the whole
+       header is keyboard- and click-accessible. The chevron rotates to
+       indicate state; the <ul> is shown/hidden via the [hidden] attr. */
+    .rules-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 0;
+      margin: 0;
+      background: transparent;
+      border: 0;
+      color: inherit;
+      cursor: pointer;
+      text-align: left;
+    }
+    .rules-toggle h2 { font-size: 16px; }
+    .rules-toggle:hover h2 { color: var(--out); }
+    .rules-toggle:focus-visible {
+      outline: 2px solid var(--out);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+    .rules-toggle-chev {
+      display: inline-block;
+      font-size: 12px;
+      color: var(--muted);
+      transition: transform 0.15s ease;
+      transform: rotate(0deg);
+    }
+    .rules-toggle[aria-expanded="true"] .rules-toggle-chev {
+      transform: rotate(90deg);
+    }
+
+    /* ── Level Cleared modal ────────────────────────────────────────
+       Shown after a player exits via OUT. Pauses the game until the
+       player clicks Next Level. Modeled after #setup-overlay. */
+    #level-cleared-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      background: rgba(2, 4, 10, 0.78);
+      backdrop-filter: blur(3px);
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+    #level-cleared-overlay.hidden { display: none; }
+    #level-cleared-card {
+      background: linear-gradient(180deg, #1f1610, #120a05);
+      border: 1px solid rgba(212, 163, 115, 0.5);
+      border-radius: 16px;
+      padding: 28px 32px;
+      width: min(440px, 100%);
+      box-shadow: 0 14px 50px rgba(0, 0, 0, 0.7), 0 0 60px rgba(245, 158, 11, 0.18) inset;
+      text-align: center;
+    }
+    #level-cleared-card h2 {
+      margin: 0 0 6px 0;
+      font-family: 'Bangers', 'Cabin Sketch', cursive;
+      font-size: 38px;
+      letter-spacing: 0.06em;
+      color: #f5e9d3;
+      text-shadow:
+        0 1px 0 #2a1c10,
+        0 2px 0 #1a1108,
+        0 3px 0 #0e0905,
+        0 0 18px rgba(245, 158, 11, 0.45);
+      text-transform: none;
+    }
+    #level-cleared-card .tagline {
+      font-family: 'Cabin Sketch', cursive;
+      font-size: 18px;
+      color: #d4a373;
+      margin-bottom: 16px;
+    }
+    #level-cleared-card .turn-readout {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+    #level-cleared-card .turn-readout strong {
+      color: var(--fg);
+      font-size: 22px;
+      font-family: 'Bangers', cursive;
+      letter-spacing: 0.05em;
+      margin: 0 4px;
+    }
+    /* Editor-unlock invite ("you can now build your own level on Level 13").
+       Only meant to appear on the YOU WON! final modal. JS toggles `.hidden`
+       on this element via showLevelClearedModal(); this rule is what makes
+       the toggle actually hide it on every regular Level Cleared modal. */
+    #level-cleared-win-message.hidden { display: none; }
+    /* Score breakdown: aggregated list of point-earning (and point-losing)
+       events from the current level only. Renders between the turn readout
+       and the Next Level button. Empty state (e.g. cleared on first move
+       with no spider kills, no items picked up) is hidden via .hidden. */
+    #level-cleared-card .score-breakdown {
+      margin: 0 0 20px 0;
+      padding: 12px 14px;
+      background: rgba(0, 0, 0, 0.32);
+      border: 1px solid rgba(212, 163, 115, 0.25);
+      border-radius: 10px;
+      text-align: left;
+    }
+    #level-cleared-card .score-breakdown.hidden { display: none; }
+    #level-cleared-card .score-breakdown h3 {
+      margin: 0 0 8px 0;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #d4a373;
+      font-weight: 700;
+    }
+    #level-cleared-card .score-breakdown ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    #level-cleared-card .score-breakdown li {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      font-size: 13px;
+      color: #f5e9d3;
+    }
+    #level-cleared-card .score-breakdown li .lbl {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #level-cleared-card .score-breakdown li .pts {
+      font-family: 'Bangers', 'Cabin Sketch', cursive;
+      letter-spacing: 0.04em;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    #level-cleared-card .score-breakdown li .pts.pos { color: #fbbf24; }
+    #level-cleared-card .score-breakdown li .pts.neg { color: #f87171; }
+    #level-cleared-card .score-breakdown .total {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(212, 163, 115, 0.25);
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      font-size: 13px;
+      color: #d4a373;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+    }
+    #level-cleared-card .score-breakdown .total .pts {
+      font-family: 'Bangers', 'Cabin Sketch', cursive;
+      font-size: 20px;
+      letter-spacing: 0.04em;
+      color: #f5e9d3;
+    }
+    #next-level-btn {
+      width: 100%;
+      padding: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      background: var(--out);
+      color: #052e1c;
+      border: 1px solid var(--out);
+      border-radius: 10px;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+    }
+    #next-level-btn:hover { background: #34d399; }
+    /* YOU-WON modal action row. Stacks the primary "next level" button
+       above the optional petting-zoo CTA so the two are visually peers
+       (same width, equal weight) but the bonus path is colour-coded
+       pink to match the bonus level's friendly theme. */
+    .level-cleared-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    #petting-zoo-btn {
+      width: 100%;
+      padding: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      background: #f9a8d4;
+      color: #3b0764;
+      border: 1px solid rgba(244, 114, 182, 0.85);
+      border-radius: 10px;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+    }
+    #petting-zoo-btn:hover { background: #fbcfe8; }
+    #petting-zoo-btn.hidden { display: none; }
+
+    /* Hazards-and-Effects legend, displayed directly under the board. */
+    .board-legend {
+      margin-top: 14px;
+      padding: 12px 14px;
+      background: rgba(20, 23, 31, 0.7);
+      border: 1px solid var(--grid-line);
+      border-radius: 10px;
+    }
+    .board-legend h2 {
+      margin: 0 0 8px 0;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    /* Functional sub-group headings inside the legend (e.g. "Hazards",
+       "Pickups"). Smaller and dimmer than the main h2 so the eye still
+       lands on the entries first. */
+    .board-legend h3 {
+      margin: 12px 0 4px 0;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      opacity: 0.7;
+      font-weight: 600;
+    }
+    .board-legend h3:first-of-type { margin-top: 2px; }
+    .board-legend .legend-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 4px 14px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .board-legend .legend-grid li {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .board-legend .legend-grid li strong { color: var(--fg); }
+
+    /* ── Setup overlay ─────────────────────────────────────────────── */
+    #setup-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(2, 4, 10, 0.85);
+      backdrop-filter: blur(4px);
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+    #setup-overlay.hidden { display: none; }
+    #setup-card {
+      background: var(--panel);
+      border: 1px solid var(--grid-line);
+      border-radius: 14px;
+      padding: 22px 24px;
+      width: min(420px, 100%);
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+      /* Anchor the corner mascots (.setup-mascot) absolutely. */
+      position: relative;
+    }
+    /* Decorative mascots on the splash modal. The spider sits inline
+       at the left of the <h2> title (rotated 45° so it looks like it's
+       crawling diagonally toward the player); the worm wiggles in the
+       bottom-right corner. The worm glyph (🐛) intentionally matches
+       the in-game spider-free render so the splash previews exactly
+       what the player will see on the board. */
+    .setup-mascot {
+      pointer-events: none;
+      user-select: none;
+      filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.55));
+      z-index: 1;
+    }
+    .setup-mascot.mascot-spider {
+      display: inline-block;
+      vertical-align: middle;
+      font-size: 0.55em;
+      margin-right: 0.18em;
+      transform: rotate(45deg);
+      transform-origin: 50% 60%;
+      filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.7));
+    }
+    .setup-mascot.mascot-worm {
+      position: absolute;
+      bottom: 10px;
+      right: 14px;
+      font-size: 34px;
+      filter: drop-shadow(0 0 6px rgba(132, 204, 22, 0.6));
+      animation: setup-worm-wiggle 2.2s ease-in-out infinite;
+    }
+    @keyframes setup-worm-wiggle {
+      0%, 100% { transform: translate(0, 0)    rotate(-6deg); }
+      50%      { transform: translate(0, -3px) rotate(8deg);  }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .setup-mascot.mascot-worm { animation: none; transform: none; }
+    }
+    #setup-card h2 {
+      margin: 0 0 4px 0;
+      font-size: 30px;
+      color: var(--fg);
+    }
+    #setup-card .subtitle {
+      list-style: none;
+      padding: 0;
+      margin: 6px 0 22px;
+      font-family: 'Cabin Sketch', 'Bangers', cursive;
+      font-style: italic;
+      color: #f5e9d3;
+      font-size: 13px;
+      line-height: 1.6;
+      letter-spacing: 0.01em;
+      text-shadow: 0 1px 0 #1a120b, 0 2px 6px rgba(0, 0, 0, 0.6);
+    }
+    #setup-card .subtitle li {
+      position: relative;
+      padding-left: 28px;
+      margin: 0 0 6px;
+    }
+    #setup-card .subtitle li::before {
+      content: "✨";
+      position: absolute;
+      left: 0;
+      top: 0;
+      font-style: normal;
+      filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6));
+    }
+    #setup-card .subtitle li:last-child { margin-bottom: 0; }
+    #setup-card .subtitle li:last-child::before { content: "🔥"; }
+    #setup-card .subtitle .accent {
+      color: var(--cake, #ffb86b);
+      font-style: italic;
+    }
+    #setup-card .subtitle .danger {
+      color: #ff6b6b;
+      font-weight: 700;
+      font-style: italic;
+      letter-spacing: 0.04em;
+      text-shadow:
+        0 0 4px rgba(255, 107, 107, 0.55),
+        0 1px 0 #1a120b,
+        0 2px 6px rgba(0, 0, 0, 0.6);
+    }
+    #setup-card .setup-section { margin-bottom: 16px; }
+    #setup-card label.section-label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .player-count-row { display: flex; gap: 8px; }
+    .player-count-row button {
+      flex: 1;
+      padding: 10px 0;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .player-count-row button.selected {
+      background: var(--p1);
+      color: #fff;
+      border-color: var(--p1);
+    }
+    .name-row {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+    }
+    .name-row .swatch {
+      flex: 0 0 14px; width: 14px; height: 14px;
+    }
+    .name-row label {
+      width: 64px; font-size: 12px; color: var(--muted);
+    }
+    .name-row input {
+      flex: 1;
+      background: #0a0d14;
+      color: var(--fg);
+      border: 1px solid #2d3748;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+    .name-row.hidden { display: none; }
+    #start-btn {
+      display: block;
+      width: 50%;
+      margin: 0 auto;
+      padding: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      background: var(--in);
+      color: #052e1c;
+      border-color: var(--in);
+    }
+    #start-btn:hover { background: #34d399; }
+    .setup-note {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 14px;
+      line-height: 1.5;
+    }

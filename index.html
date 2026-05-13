@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Dev: disable browser caching so source edits show up on every reload. -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Cabin+Sketch:wght@400;700&display=swap" rel="stylesheet">
+  <title>Spiders III</title>
+  <!-- ── Fresh-start + cache-bust preload ────────────────────────────────
+       Runs before any of our local assets fetch, so it can do two jobs:
+
+         1. If the URL contains ?fresh — i.e. the player opened
+            `index.html?fresh=1` or clicked the "Open clean copy" link in
+            the setup overlay — wipe every `spiders3-*` localStorage key.
+            That covers Edit Mode saves, OE migration tags, and any
+            stashed preferences from a prior session. Then reload with
+            `?cb=<timestamp>` instead of `?fresh` so the redirect URL is
+            stable + bookmarkable but still cache-busting.
+
+         2. If the URL contains ?cb=<token> — either we just put it
+            there in step 1, or the player typed it manually — stash a
+            `?cb=<token>` query suffix on window.__cb. The two
+            loadAsset() inline scripts below (one for style.css, one for
+            game.js) then append that suffix to the asset URL so the
+            browser sees a different cache key and is forced to refetch.
+
+       The meta-http-equiv block above tells browsers not to cache the
+       HTML doc, but proxies / service workers sometimes ignore those
+       hints. A query-string cache key is the bulletproof fallback. -->
+  <script>
+    (function preloadCacheBust() {
+      var u = new URL(location.href);
+      if (u.searchParams.has('fresh')) {
+        try {
+          var doomed = [];
+          for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i);
+            if (k && k.indexOf('spiders3-') === 0) doomed.push(k);
+          }
+          doomed.forEach(function (k) { localStorage.removeItem(k); });
+        } catch (e) { /* private mode / storage disabled — best-effort */ }
+        u.searchParams.delete('fresh');
+        u.searchParams.set('cb', Date.now().toString(36));
+        location.replace(u.toString());
+        return;
+      }
+      var cb = u.searchParams.get('cb');
+      window.__cb = cb ? ('?cb=' + encodeURIComponent(cb)) : '';
+    })();
+    // Helper used at the two static asset insertion points below. Writes
+    // a tag synchronously into the document stream with a fresh per-load
+    // cache-bust suffix. We intentionally IGNORE the URL's ?cb= token
+    // for assets: that token only exists to give the redirect from
+    // ?fresh=1 a stable, bookmarkable URL for the HTML doc. Reusing it
+    // on game.js / style.css would cause the browser to serve a cached
+    // copy on every F5 (the URL `game.js?cb=abc123` never changes), so
+    // edits to game.js would silently never reach the running tab.
+    // Always-fresh per page-load fixes that — the dev server is local
+    // so the extra bytes are free, and in production a small game like
+    // this benefits more from instant updates than from CDN caching.
+    function loadAsset(tag, src) {
+      var suffix = '?cb=' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      if (tag === 'link') {
+        document.write('<link rel="stylesheet" href="' + src + suffix + '">');
+      } else {
+        document.write('<script src="' + src + suffix + '"><\/script>');
+      }
+    }
+  </script>
+  <script>loadAsset('link', 'style.css');</script>
+</head>
+<body>
+  <!-- Pre-game setup overlay: name the player. Single-player only. -->
+  <div id="setup-overlay">
+    <div id="setup-card">
+      <!-- Decorative mascots: a 45°-rotated spider rides the left
+           edge of the title (inline so it scales with the h2 wobble),
+           and a worm wiggles in the bottom-right corner. The worm
+           glyph (🐛) deliberately matches the in-game spider-free
+           render so the splash previews exactly what the board will
+           show. -->
+      <h2><span class="setup-mascot mascot-spider" aria-hidden="true">🕷</span>Spiders III</h2>
+      <span class="setup-mascot mascot-worm" aria-hidden="true">🐛</span>
+      <ul class="subtitle">
+        <li>Step carefully!</li>
+        <li>Uncover the secret of <span class="accent">mysterious squares</span> and items!</li>
+        <li>Find your way <span class="accent">OUT</span> in as few turns as possible!</li>
+        <li>Stuck? Don&rsquo;t be afraid to hit the <span class="accent">Reset Level</span> button &mdash; it&rsquo;s there to help!</li>
+        <li>And most importantly, <span class="danger">DON&rsquo;T PET THE SPIDERS!</span></li>
+      </ul>
+
+      <div class="setup-section">
+        <label class="section-label">Player name</label>
+        <div class="name-row" data-name-row="1">
+          <span class="swatch p1"></span>
+          <label for="name-1">Player 1</label>
+          <input type="text" id="name-1" maxlength="20" placeholder="Player 1" />
+        </div>
+      </div>
+
+      <button id="start-btn" type="button">Start game</button>
+      <!-- "Open clean copy" link: navigates to ?fresh=1 which the preload
+           script in <head> intercepts to wipe every spiders3-* localStorage
+           key (Edit Mode saves, prefs, migration tags) and force a
+           cache-busted reload of style.css + game.js. Use this whenever a
+           stubborn browser cache or a stale Edit Mode save is making the
+           game look broken — no DevTools required. -->
+      <div style="margin-top:8px; text-align:center; font-size:12px;">
+        <a id="fresh-start-link" href="?fresh=1" style="color:var(--muted); text-decoration:underline; cursor:pointer;">
+          Open clean copy (clears saved levels + cache)
+        </a>
+      </div>
+      <div class="setup-section" style="margin-top:12px">
+        <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); cursor:pointer">
+          <input type="checkbox" id="spider-free-toggle" />
+          <span>Spider-free mode (cosmetic) — render hazards as worms instead of spiders</span>
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); cursor:pointer; margin-top:6px">
+          <input type="checkbox" id="high-contrast-toggle" />
+          <span>High-contrast mode — bolder colors, thicker borders, brighter helper text</span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <h1><span class="brand-title">Spiders III<span class="brand-strike" aria-hidden="true"></span></span><span class="brand-worm">Worms III</span> <span class="pill">prototype</span></h1>
+
+  <div id="app">
+    <div id="board-wrap">
+      <div id="level-banner"><span id="level-display">Level 1 / 10</span><span id="unsaved-edits-badge" class="unsaved-edits-badge hidden" title="You have unsaved editor edits. Re-entering edit mode or jumping levels will prompt to discard.">● Unsaved edits</span><span id="playtest-banner" class="playtest-banner hidden" title="You're playtesting an unsaved draft. Reset Level will replay the same layout. Click 'Back to editor' to return.">▶ Playtesting draft</span></div>
+      <div class="edit-banner">
+        <div class="edit-banner-title">Edit mode — pick a tool, then click a cell</div>
+        <div class="edit-tools" id="edit-tools">
+          <div class="edit-tool-group" data-group="actions">
+            <button class="edit-tool danger" data-tool="erase" title="Clear cell">
+              <span class="tool-glyph">⌫</span><span class="tool-label">Clear</span>
+            </button>
+            <button class="edit-tool" data-tool="move" title="Move: click source then destination">
+              <span class="tool-glyph">↔</span><span class="tool-label">Move</span>
+            </button>
+            <button class="edit-tool" data-tool="copy" title="Copy: click source, then click any number of destinations">
+              <span class="tool-glyph">⎘</span><span class="tool-label">Copy</span>
+            </button>
+          </div>
+          <div class="edit-tool-group" data-group="cells">
+            <button class="edit-tool" data-tool="env-slide" title="Slide">
+              <span class="tool-glyph">↘</span><span class="tool-label">Slide</span>
+            </button>
+            <button class="edit-tool" data-tool="env-river" title="River (pick flow direction on click)">
+              <span class="tool-glyph">≈</span><span class="tool-label">River</span>
+            </button>
+            <button class="edit-tool" data-tool="env-knight" title="Knight">
+              <span class="tool-glyph">♞</span><span class="tool-label">Knight</span>
+            </button>
+            <button class="edit-tool" data-tool="env-green-knight" title="Green Knight — jumps 2 forward + 1 LEFT (mirror of Knight)">
+              <span class="tool-glyph" style="display:inline-block;transform:scaleX(-1);color:#22c55e">♞</span><span class="tool-label">G.Knight</span>
+            </button>
+            <button class="edit-tool" data-tool="env-lava" title="Lava">
+              <span class="tool-glyph">🌋</span><span class="tool-label">Lava</span>
+            </button>
+            <button class="edit-tool" data-tool="env-tnt" title="TnT">
+              <span class="tool-glyph">💣</span><span class="tool-label">TnT</span>
+            </button>
+            <button class="edit-tool" data-tool="env-boulder" title="Boulder">
+              <span class="tool-glyph">⬣</span><span class="tool-label">Boulder</span>
+            </button>
+            <button class="edit-tool" data-tool="env-tree" title="Tree (hides items underneath; players standing here are invisible to spiders; rocks can't be pushed in)">
+              <span class="tool-glyph">🌳</span><span class="tool-label">Tree</span>
+            </button>
+            <button class="edit-tool" data-tool="env-button" title="Button (player or rock activates; wire targets next)">
+              <span class="tool-glyph">⊙</span><span class="tool-label">Button</span>
+            </button>
+            <button class="edit-tool" data-tool="wire-button" title="Wire a button to its target cells (TnT detonates, Lock opens)">
+              <span class="tool-glyph">⌁</span><span class="tool-label">Wire</span>
+            </button>
+            <button class="edit-tool" data-tool="env-wall" title="Wall (pick directions on click)">
+              <span class="tool-glyph">▦</span><span class="tool-label">Wall</span>
+            </button>
+            <button class="edit-tool" data-tool="env-portal" title="Purple portal (pick direction on click)">
+              <span class="tool-glyph">◐</span><span class="tool-label">Portal</span>
+            </button>
+            <button class="edit-tool" data-tool="env-portal-y" title="Yellow portal (pick direction on click)">
+              <span class="tool-glyph">◑</span><span class="tool-label">Y. Portal</span>
+            </button>
+            <button class="edit-tool" data-tool="env-portal-b" title="Blue portal (pick direction on click)">
+              <span class="tool-glyph">◒</span><span class="tool-label">B. Portal</span>
+            </button>
+            <button class="edit-tool" data-tool="env-portal-r" title="Red portal (pick direction on click)">
+              <span class="tool-glyph">◓</span><span class="tool-label">R. Portal</span>
+            </button>
+            <button class="edit-tool" data-tool="env-portal-g" title="Green portal (pick direction on click)">
+              <span class="tool-glyph">◔</span><span class="tool-label">G. Portal</span>
+            </button>
+          </div>
+          <div class="edit-tool-group" data-group="items">
+            <button class="edit-tool" data-tool="item-weapon" title="Knife (toggle)">
+              <span class="tool-glyph">🗡</span><span class="tool-label">Knife</span>
+            </button>
+            <button class="edit-tool" data-tool="item-potion" title="Spider Freeze potion (toggle)">
+              <span class="tool-glyph">🧪</span><span class="tool-label">Potion</span>
+            </button>
+            <button class="edit-tool" data-tool="item-cake" title="Cake (toggle)">
+              <span class="tool-glyph">🍰</span><span class="tool-label">Cake</span>
+            </button>
+            <button class="edit-tool" data-tool="item-key" title="Key (toggle)">
+              <span class="tool-glyph">🔑</span><span class="tool-label">Key</span>
+            </button>
+            <button class="edit-tool" data-tool="item-lock" title="Lock (toggle)">
+              <span class="tool-glyph">🔒</span><span class="tool-label">Lock</span>
+            </button>
+            <button class="edit-tool" data-tool="item-rock" title="Rock / pushable boulder (toggle)">
+              <span class="tool-glyph">🪨</span><span class="tool-label">Rock</span>
+            </button>
+          </div>
+          <div class="edit-tool-group" data-group="entities">
+            <button class="edit-tool" data-tool="spider" title="Spider spawn (toggle)">
+              <span class="tool-glyph">🕷</span><span class="tool-label">Spider</span>
+            </button>
+            <button class="edit-tool" data-tool="in" title="Move IN cell">
+              <span class="tool-glyph" style="color:var(--in)">in</span><span class="tool-label">Move IN</span>
+            </button>
+            <button class="edit-tool" data-tool="out" title="Move OUT cell">
+              <span class="tool-glyph" style="color:var(--out)">out</span><span class="tool-label">Move OUT</span>
+            </button>
+          </div>
+          <div class="edit-tool-group" data-group="save">
+            <button class="edit-tool" data-tool="new-layout" title="Wipe the grid and start a fresh 10×10 layout">
+              <span class="tool-glyph">➕</span><span class="tool-label">New level</span>
+            </button>
+            <button class="edit-tool" data-tool="playtest" title="Play the current draft (without saving). Reset Level keeps replaying the same layout. Click EDIT MODE to return.">
+              <span class="tool-glyph">▶</span><span class="tool-label">Playtest</span>
+            </button>
+            <button class="edit-tool" data-tool="save-layout" title="Save current layout to a level…">
+              <span class="tool-glyph">💾</span><span class="tool-label">Save layout…</span>
+            </button>
+          </div>
+        </div>
+        <div class="edit-hint" id="edit-hint">Pick a tool above. IN / OUT / Spider / items can be toggled. Walls and Portals open a direction picker.</div>
+        <!-- Live wire info panel: appears whenever the user is wiring a
+             button (env-button placement auto-opens this; the wire-button
+             tool can also open it). Lists each wired target cell and the
+             effect this button will have on it, based on the target's
+             current contents. Populated by renderButtonWireInfo(). -->
+        <div id="button-wire-info" class="button-wire-info hidden" aria-live="polite"></div>
+      </div>
+      <!-- Direction picker popover for walls / portals (shown by editor). -->
+      <div id="dir-picker" class="dir-picker hidden" aria-hidden="true"></div>
+      <div id="board" role="grid" aria-label="10 by 10 game board"></div>
+      <!-- Off-grid staging slot: holds a colored puck for each player
+           whose status is 'off-grid'. Positioned adjacent to (just
+           outside) the IN cell by render(). Hidden when everyone is
+           on-grid or already exited. -->
+      <div id="off-grid-staging" aria-hidden="true"></div>
+      <!-- Edge arrows: a green arrow pointing AT the IN cell and a red
+           arrow pointing AWAY FROM the OUT cell. Both sit just outside
+           the grid on whichever edge is closest to their target cell.
+           Positioned in JS by updateInOutArrows() each render(). -->
+      <div id="in-arrow" class="board-arrow in-arrow" aria-hidden="true"></div>
+      <div id="out-arrow" class="board-arrow out-arrow" aria-hidden="true"></div>
+      <!-- Scoreboard sits directly below the grid so the running total
+           is visible without pushing the board off-screen. The
+           cumulative number (#score-value) is rendered large and
+           yellow; the last-5 log sits beside it. -->
+      <div id="board-scoreboard">
+        <div id="board-scoreboard-total">
+          <div class="label">Score</div>
+          <div class="value" id="score-value">0</div>
+        </div>
+        <div id="board-scoreboard-log">
+          <div id="score-log-empty" class="empty">No points yet.</div>
+          <ul id="score-log"></ul>
+        </div>
+      </div>
+
+      <!-- Effects and Hazards legend, placed directly under the board
+           for quick reference. Every entry is always visible from the
+           start (no gating on prior encounters). The list is ordered
+           by when a player first encounters each feature as they
+           progress through the built-in levels (Hallway → Sandbox), so
+           reading top-to-bottom mirrors the difficulty curve. Each
+           entry is intentionally short — the glyph + name does most
+           of the work; descriptions are a single clause. The full
+           rules live in the "Rules — current" panel in the side
+           column. -->
+      <div class="board-legend" id="board-legend">
+        <h2>Effects and Hazards</h2>
+        <ul class="legend-grid">
+          <!-- L1 Hallway -->
+          <li data-feature="spider">
+            <span style="display:inline-block;width:14px;height:14px;vertical-align:middle;
+              background:#1a0608; border:1px solid rgba(239,68,68,0.7);
+              border-radius:3px; margin-right:6px; text-align:center; line-height:12px;
+              color:#fecaca; font-weight:900; font-size:10px;">🕷</span>
+            <strong style="color:var(--spider)">Spider</strong> — chases you within 3 squares; kill with a knife.
+          </li>
+          <li data-feature="cake">
+            <span style="display:inline-block;width:14px;height:14px;vertical-align:middle;
+              background:radial-gradient(ellipse at center, rgba(252,165,165,0.55), rgba(190,18,60,0.2));
+              border:1px solid rgba(244,114,182,0.7); border-radius:3px; margin-right:6px;
+              text-align:center; line-height:12px; font-size:11px;">🍰</span>
+            <strong style="color:#f472b6">Cake</strong> — +100 points; just walk over.
+          </li>
+
+          <!-- L2 Spider Love -->
+          <li data-feature="chest">
+            <span style="display:inline-block;width:14px;height:14px;vertical-align:middle;
+              background:linear-gradient(180deg,#a06228,#7c4a1e);
+              border:1px solid #3b1f08; border-radius:3px; margin-right:6px;
+              text-align:center; line-height:12px; color:#fde047; font-weight:900; font-size:10px;">▣</span>
+            <strong style="color:#d4a373">Treasure chest</strong> — opens with a helpful item inside.
+          </li>
+          <li data-feature="knife">
+            <span style="display:inline-block;width:14px;height:14px;vertical-align:middle;
+              background:radial-gradient(ellipse at center, rgba(253,224,71,0.5), rgba(253,224,71,0.05));
+              border:1px solid rgba(253,224,71,0.7); border-radius:3px; margin-right:6px;
+              text-align:center; line-height:12px; color:var(--weapon); font-weight:900; font-size:10px;">🗡</span>
+            <strong style="color:var(--weapon)">Spider Knife</strong> — kills the next spider that catches you.
+          </li>
+
+          <!-- L3 Horse Play -->
+          <li data-feature="knight">
+            <span style="display:inline-block;width:14px;height:14px;vertical-align:middle;
+              background:radial-gradient(ellipse at center, rgba(192,132,252,0.5), rgba(192,132,252,0.05));
+              border:1px solid rgba(192,132,252,0.6); border-radius:3px; margin-right:6px;
+              text-align:center; line-height:12px; color:var(--knight); font-weight:700; font-size:10px;">♞</span>
+            <strong style="color:var(--knight)">Knight</strong> — jumps you 2 forward + 1 right.
+          </li>
+          <li data-feature="green-knight">
+            <span style="display:inline-block;width:14px;height:14px;vertical-align:middle;
+              background:radial-gradient(ellipse at center, rgba(74,222,128,0.5), rgba(34,197,94,0.05));
+              border:1px solid rgba(74,222,128,0.7); border-radius:3px; margin-right:6px;
+              text-align:center; line-height:12px; color:#22c55e; font-weight:700; font-size:10px;
+              transform:scaleX(-1);">♞</span>
+            <strong style="color:#22c55e">Green Knight</strong> — mirror: 2 forward + 1 left.
+          </li>
+          <li data-feature="tnt">
+            <span style="display:inline-block;width:14px;height:14px;vertical-align:middle;
+              background:radial-gradient(ellipse at center, rgba(249,115,22,0.5), rgba(127,29,29,0.1));
+              border:1px solid rgba(249,115,22,0.7); border-radius:3px; margin-right:6px;
+              text-align:center; line-height:12px; color:#fdba74; font-weight:900; font-size:10px;">✸</span>
+            <strong style="color:var(--tnt)">TnT</strong> — explodes; resets the level.
+          </li>
+
+          <!-- L4 Hoppity Hop -->
+          <li data-feature="potion">
+            <span style="display:inline-block;width:14px;height:14px;vertical-align:middle;
+              background:radial-gradient(ellipse at center, rgba(103,232,249,0.5), rgba(103,232,249,0.05));
+              border:1px solid rgba(103,232,249,0.7); border-radius:3px; margin-right:6px;
+              text-align:center; line-height:12px; color:var(--accent-cyan); font-weight:900; font-size:10px;">👻</span>
+            <strong style="color:var(--accent-cyan)">Spider Freeze Potion</strong> — drink (<kbd style="font-family:inherit;background:#1f2937;border:1px solid #475569;border-radius:3px;padding:0 4px;font-size:10px;color:#fde047;">P</kbd>) to freeze spiders for 4 turns.
+          </li>
+
+          <!-- L5 Portal! -->
+          <li data-feature="slide">
+            <span style="display:inline-block;width:14px;height:14px;vertical-align:middle;
+              background:linear-gradient(135deg, rgba(56,189,248,0.5) 0%, rgba(56,189,248,0.18) 100%);
+              border:1px solid rgba(56,189,248,0.7); border-radius:3px; margin-right:6px;"></span>
+            <strong style="color:var(--slide)">Slide</strong> — slide forward until you hit another slide.
+          </li>
+          <li data-feature="portal">
+            <span style="display:inline-block;width:14px;height:14px;vertical-align:middle;
+              background:conic-gradient(from 0deg,
+                var(--portal-y) 0deg 90deg,
+                var(--portal-r) 90deg 180deg,
+                var(--portal-b) 180deg 270deg,
+                var(--portal-g) 270deg 360deg);
+              border:1px solid rgba(0,0,0,0.45); border-radius:3px; margin-right:6px;"></span>
+            <strong style="color:var(--portal-y)">Portals</strong> — teleport to the same-color partner; bar shows the exit side.
+          </li>
+          <li data-feature="rock">
+            <span style="display:inline-block;width:14px;height:14px;vertical-align:middle;
+              background:radial-gradient(ellipse at 35% 30%, #b8a898 0%, #6d5e52 60%, #3a312a 100%);
+              border:1px solid rgba(0,0,0,0.5); border-radius:50%;
+              margin-right:6px;"></span>
+            <strong style="color:#c8b8a8">Rock</strong> — push by stepping in; needs clear space behind.
+          </li>
+          <li data-feature="lock">
+            <span style="display:inline-block;width:14px;height:14px;vertical-align:middle;
+              background:rgba(148,163,184,0.18);
+              border:1px solid var(--lock); border-radius:3px; margin-right:6px;
+              text-align:center; line-height:12px; color:var(--lock); font-size:10px;">🔒</span>
+            <strong style="color:var(--lock)">Lock</strong> — blocks entry; needs a key or a button held open.
+          </li>
+
+          <!-- L6 DANGER!! -->
+          <li data-feature="lava">
+            <span style="display:inline-block;width:14px;height:14px;vertical-align:middle;
+              background:
+                radial-gradient(circle at 30% 30%, rgba(254,240,138,0.8) 0%, transparent 35%),
+                radial-gradient(circle at 75% 70%, rgba(40,10,4,0.7) 0%, transparent 30%),
+                radial-gradient(ellipse at 50% 50%, #fb923c 0%, #ea580c 40%, #b91c1c 100%);
+              border:1px solid rgba(254,215,60,0.7); border-radius:3px; margin-right:6px;"></span>
+            <strong style="color:var(--lava)">Lava</strong> — kills on contact; rocks turn it to boulder.
+          </li>
+
+          <!-- L11 Ford the River -->
+          <li data-feature="tree">
+            <span style="display:inline-block;width:14px;height:14px;vertical-align:middle;
+              background:
+                radial-gradient(circle 1.5px at 30% 30%, #bbf7d0, transparent 70%),
+                radial-gradient(circle 1.5px at 70% 35%, #86efac, transparent 70%),
+                radial-gradient(circle 1.5px at 45% 65%, #86efac, transparent 70%),
+                radial-gradient(circle 1.5px at 25% 75%, #4ade80, transparent 70%),
+                radial-gradient(circle 1.5px at 75% 75%, #4ade80, transparent 70%),
+                linear-gradient(160deg, #166534 0%, #14532d 100%);
+              border:1px solid rgba(0,0,0,0.6);
+              clip-path: polygon(50% 0%, 75% 6%, 100% 22%, 94% 50%, 100% 78%, 75% 94%, 50% 100%, 25% 94%, 0% 78%, 6% 50%, 0% 22%, 25% 6%);
+              margin-right:6px;"></span>
+            <strong style="color:#4ade80">Tree</strong> — hides you from spiders; rocks can’t enter.
+          </li>
+          <li data-feature="river">
+            <span style="display:inline-block;width:14px;height:14px;vertical-align:middle;
+              background:repeating-linear-gradient(90deg, rgba(8,47,73,0.6) 0 3px, rgba(34,211,238,0.7) 3px 6px);
+              border:1px solid rgba(34,211,238,0.7); border-radius:3px; margin-right:6px;"></span>
+            <strong style="color:var(--river)">River</strong> — carries you one square per turn.
+          </li>
+
+          <!-- L12 Ordered Escape -->
+          <li data-feature="button">
+            <span style="display:inline-block;width:14px;height:10px;vertical-align:middle;
+              background:linear-gradient(180deg, #f87171 0%, #ef4444 35%, #b91c1c 100%);
+              border:1px solid rgba(127, 29, 29, 0.9); border-radius:3px;
+              box-shadow:
+                0 2px 0 #7f1d1d,
+                inset 0 1px 1px rgba(255, 255, 255, 0.4),
+                inset 0 -1px 1px rgba(0, 0, 0, 0.35);
+              margin-right:8px;"></span>
+            <strong style="color:#ef4444">Button</strong> — opens locks, flips portals, or triggers TnT while pressed.
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <aside id="side">
+      <!-- Controls card. Moved to the top of the sidebar so players have
+           one-click access to Undo, Reset Level, level-jump, and the HC
+           toggle without having to scroll past Turn/Players first. -->
+      <div class="card">
+        <h2>Controls</h2>
+        <div class="rules">
+          On your turn, click anywhere to move <strong>one square</strong> toward your click
+          (up/down/left/right). Enter via the <strong style="color:var(--in)">IN</strong> cell,
+          exit via the <strong style="color:var(--out)">OUT</strong> cell.
+        </div>
+        <div class="control-actions">
+          <button id="undo-btn" class="big-action-btn undo-btn" type="button"
+                  title="Undo your last move. Only available once per move.">
+            <span class="big-action-btn-icon" aria-hidden="true">↶</span>
+            <span class="big-action-btn-label">Undo</span>
+          </button>
+          <button id="reset-level-btn" class="big-action-btn reset-level-btn" type="button"
+                  title="Rebuild the current level — your last attempt's score is rolled back, but keys you've collected stay.">
+            <span class="big-action-btn-icon" aria-hidden="true">⟳</span>
+            <span class="big-action-btn-label">Reset Level</span>
+          </button>
+        </div>
+        <div style="margin-top:10px;">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-bottom:6px;">Jump to level</div>
+          <div id="level-jump-row" style="display:flex; gap:4px; flex-wrap:wrap;"></div>
+        </div>
+        <div style="margin-top:12px;">
+          <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); cursor:pointer;">
+            <input type="checkbox" id="high-contrast-toggle-controls" />
+            <span>High-contrast mode</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Combined Turn + Players card. The header reports the running
+           turn counter and a "Min" floor: the minimum number of turns it
+           would take a single player to clear the current level
+           (computed via BFS in computeMinTurnsToOut). The active player
+           is identified by the status line below + the highlighted
+           badge on their per-player row, so the header itself doesn't
+           repeat the name. -->
+      <div class="card">
+        <div class="turn-header">
+          <h2>Turn</h2>
+          <span id="turn-counter">Turn <span id="turn-counter-num">0</span> <span class="turn-counter-min">· Minimum turns to clear: <span id="min-turns">—</span></span></span>
+        </div>
+        <div class="status-line" id="status-line">Click the green <strong style="color:var(--in)">IN</strong> cell to enter the grid.</div>
+
+        <!-- Players list (folded in from the former Players card). -->
+        <div style="margin-top:12px; padding-top:10px; border-top:1px solid #1a2030;">
+          <div class="player-row" data-player-row="1">
+            <span><span class="swatch p1" style="display:inline-block;vertical-align:middle;"></span> <span id="p1-name">Player 1</span></span>
+            <span class="badge" id="p1-badge">off-grid</span>
+          </div>
+          <div class="status-line" id="p1-loadout" style="margin:2px 0 6px 22px;">no weapon</div>
+          <button type="button" id="p1-drink-potion" class="drink-potion-btn hidden"
+                  style="margin:0 0 8px 22px;"
+                  title="Drink a Spider Freeze Potion. Freezes spiders for 4 of your turns. Shortcut: P">
+            🧪 Drink Potion <span style="opacity:0.65;font-weight:400;font-size:10px;">(P)</span>
+          </button>
+          <div class="player-row" data-player-row="2">
+            <span><span class="swatch p2" style="display:inline-block;vertical-align:middle;"></span> <span id="p2-name">Player 2</span></span>
+            <span class="badge" id="p2-badge">off-grid</span>
+          </div>
+          <div class="status-line" id="p2-loadout" style="margin:2px 0 6px 22px;">no weapon</div>
+          <div class="player-row" data-player-row="3" style="display:none;">
+            <span><span class="swatch p3" style="display:inline-block;vertical-align:middle;"></span> <span id="p3-name">Player 3</span></span>
+            <span class="badge" id="p3-badge">off-grid</span>
+          </div>
+          <div class="status-line" id="p3-loadout" style="margin:2px 0 0 22px; display:none;">no weapon</div>
+        </div>
+      </div>
+
+      <div class="card" id="game-over-card" style="display:none;">
+        <h2>Game over</h2>
+        <div class="banner" id="game-over-text"></div>
+      </div>
+
+      <!-- Level Cleared modal: shown when the active player reaches OUT.
+           Reports turn count, holds the game until the player clicks Next Level. -->
+      <div id="level-cleared-overlay" class="hidden">
+        <div id="level-cleared-card">
+          <h2 id="level-cleared-title">Level Cleared!</h2>
+          <div class="tagline" id="level-cleared-tagline">You're safe&hellip;for now</div>
+          <div class="turn-readout">
+            Cleared in <strong id="level-cleared-turns">0</strong> <span id="level-cleared-turn-word">turns</span>
+          </div>
+          <div id="level-cleared-win-message" class="hidden"
+               style="margin:14px auto 6px; max-width:380px; line-height:1.5;
+                      color:#fde68a; font-size:13px;">
+            You can now build your own level on <strong style="color:#fde047;">Level&nbsp;13</strong>
+            — fair warning, the editor is a bit clunky.
+          </div>
+          <div class="score-breakdown hidden" id="level-cleared-breakdown">
+            <h3>This level</h3>
+            <ul id="level-cleared-breakdown-list"></ul>
+            <div class="total">
+              <span id="level-cleared-breakdown-total-label">Final Score</span>
+              <span class="pts" id="level-cleared-breakdown-total">+0</span>
+            </div>
+          </div>
+          <div class="level-cleared-actions">
+            <button id="next-level-btn" type="button">Next Level &rarr;</button>
+            <!-- Bonus path: only un-hidden by showLevelClearedModal when
+                 the player just cleared Ordered Escape (campaign final).
+                 Jumps straight to the petting-zoo bonus level instead
+                 of going through the Sandbox slot. -->
+            <button id="petting-zoo-btn" type="button" class="hidden">
+              Pet the Spiders (Lv 14) &rarr;
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="rules-card">
+        <button type="button" id="rules-toggle" class="rules-toggle" aria-expanded="false" aria-controls="rules-list">
+          <span class="rules-toggle-chev" aria-hidden="true">▸</span>
+          <h2 style="margin:0;">Rules — current</h2>
+        </button>
+        <ul class="rules" id="rules-list" hidden style="margin:8px 0 0; padding-left:18px;">
+          <li>10×10 grid, single player.</li>
+          <li>1 move per turn, orthogonal (no diagonals).</li>
+          <li>Players <em>can</em> share the same cell.</li>
+          <li>First turn must be onto the IN cell (1, 1).</li>
+          <li>Stepping on OUT (10, 10) advances everyone to the next level. Slides also count — sliding onto OUT exits the level just like a normal step.</li>
+          <li>Game over after 11 levels. Level 0 is a tutorial corridor (just walk to OUT); Level 1 is a warm-up with 6 spiders and no effects or items.</li>
+          <li>Effects fire when you enter the cell.</li>
+          <li>Slide chains into other effects, but stops on another slide. Starting your turn on a slide lets you pick the slide direction. Knight is a jump. Slides do <em>not</em> stop on OUT — your slide must come to rest on the OUT cell to exit.</li>
+          <li><strong style="color:var(--lava)">Lava</strong> kills any player or spider that enters it. Pushing a rock onto a lava cell turns it into a permanent boulder.</li>
+          <li>TnT blows you up and resets the level. Triggering TnT with a rock or spider clears the cell (and earns you +10).</li>
+          <li>Spiders wander randomly each turn, but chase the closest player within 3 squares.</li>
+          <li>If a spider catches you, you die and restart at IN.</li>
+          <li>Treasure chests are either a <strong style="color:var(--weapon)">Spider Knife</strong> (kills the next spider that catches you) or a <strong style="color:var(--accent-cyan)">Spider Freeze Potion</strong> (freezes spiders for 4 of your turns).</li>
+          <li>If <em>every</em> on-grid player is invisible, spiders stay put.</li>
+        </ul>
+      </div>
+
+      <!-- Edit-mode launcher sits in its own dedicated card at the bottom
+           of the sidebar so playtest controls (Reset, Jump to level, HC)
+           stay grouped together up top and the developer / authoring
+           toggle is clearly separated from regular play. Entering edit
+           mode also calls resetCurrentLevel() so editors always start
+           from a clean board. The card starts hidden — game.js
+           (applyEditorUnlockedUI) reveals it once the player has cleared
+           Ordered Escape (LEVEL_ORDER[11]) at least once, so the editor
+           UI doesn't distract first-time players from the campaign. -->
+      <div class="card hidden" id="edit-launch-card" style="text-align:center;">
+        <button id="edit-btn" class="edit-mode-btn" type="button" aria-label="Edit Mode — design your own level">
+          <span class="edit-mode-btn-title">EDIT MODE</span>
+          <span class="edit-mode-btn-sub">Design your own level!</span>
+        </button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Save-layout modal. Opened from the edit-mode "Save layout…" tool.
+       Lets the user write the current grid into a target level (existing
+       or new). Renders a mini-grid preview of what's currently at that
+       target, with an "are you sure" gate when the target is non-empty. -->
+  <div id="save-layout-overlay" class="save-layout-overlay hidden" aria-hidden="true">
+    <div class="save-layout-dialog" role="dialog" aria-labelledby="save-layout-title">
+      <button type="button" id="save-layout-close" aria-label="Close" title="Close">✕</button>
+      <h3 id="save-layout-title">Save layout to level</h3>
+      <div class="save-layout-row">
+        <label for="save-layout-level">Target level</label>
+        <input type="number" id="save-layout-level" min="1" max="100" step="1" value="1" />
+        <button type="button" id="save-layout-new-slot" title="Save as a new level at the end of the list">+ New level</button>
+        <span id="save-layout-level-meta" style="font-size:11px;color:#94a3b8;"></span>
+      </div>
+      <div class="save-layout-row">
+        <label for="save-layout-name">Level name</label>
+        <input type="text" id="save-layout-name" maxlength="40" placeholder="optional — e.g. Boulder Bash" style="flex:1; min-width:140px;" />
+      </div>
+      <div id="save-layout-status" class="save-layout-status">&nbsp;</div>
+      <div id="save-layout-mini-grid" class="save-layout-mini-grid" aria-hidden="true"></div>
+      <div id="save-layout-preview-meta" class="save-layout-meta">&nbsp;</div>
+      <div class="save-layout-buttons">
+        <button type="button" id="save-layout-export" style="display:none;" title="Copy this slot's saved JSON to the clipboard (or every saved slot if this one is empty)">Copy JSON</button>
+        <button type="button" id="save-layout-delete" class="danger" style="display:none;">Delete this saved level</button>
+        <button type="button" id="save-layout-confirm" class="primary">Print to level</button>
+      </div>
+    </div>
+  </div>
+
+  <script>loadAsset('script', 'game.js');</script>
+</body>
+</html>
