@@ -918,7 +918,6 @@
           { c: 1, r: 4, env: 'wall', wallDirs: [{ dc: 0, dr: 1 }, { dc: -1, dr: 0 }] },    // UI (2, 5) — SW corner of key room.
           { c: 2, r: 4, env: 'wall', wallDirs: [{ dc: 0, dr: 1 }] },                       // UI (3, 5) — south wall of key room.
           { c: 3, r: 4, env: 'wall', wallDirs: [{ dc: 0, dr: 1 }, { dc: 1, dr: 0 }] },     // UI (4, 5) — SE corner of key room.
-          { c: 5, r: 4, rock: true },                                                      // UI (6, 5) — rock parked directly above the TnT at UI (6, 6); shove south to detonate.
           { c: 6, r: 4, env: 'wall', wallDirs: [{ dc: 0, dr: -1 }, { dc: -1, dr: 0 }] },   // UI (7, 5) — NW corner of river chamber.
           { c: 7, r: 4, env: 'river', riverDirs: { dc: 0, dr: 1 } },                       // UI (8, 5) — river bends south.
           { c: 8, r: 4, rock: true },                                                      // UI (9, 5) — the puzzle rock; shove west into the river.
